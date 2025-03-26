@@ -7,7 +7,7 @@ A small Python library which publishes the DNS-SD service for a plugin.
 To install the plugin, use pip:
 
 ```bash
-pip install disguise-designer-plugin
+pip install git+https://github.com/disguise-one/python-plugin
 ```
 
 ## Usage
