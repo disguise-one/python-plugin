@@ -1,13 +1,14 @@
 from zeroconf import ServiceInfo, Zeroconf
 from zeroconf.asyncio import AsyncZeroconf
 import asyncio, socket
+from typing import Optional
 
 class DesignerPlugin:
     "Publish a plugin for the Disguise Designer application."
-    def __init__(self, name, port):
+    def __init__(self, name: str, port: int, hostname: Optional[str]=None):
         self.name = name
         self.port = port
-        self.hostname = socket.gethostname()
+        self.hostname = hostname or socket.gethostname()
 
     @property
     def service_info(self):
