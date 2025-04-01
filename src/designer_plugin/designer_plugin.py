@@ -12,12 +12,14 @@ class DesignerPlugin:
                  port: int,
                  hostname: Optional[str] = None,
                  url: Optional[str] = None,
-                 requires_session: bool = False):
+                 requires_session: bool = False,
+                 is_disguise: bool = False):
         self.name = name
         self.port = port
         self.hostname = hostname or socket.gethostname()
         self.url = url or f"http://{self.hostname}:{port}"
         self.requires_session = requires_session
+        self.is_disguise = is_disguise
 
     @staticmethod
     def default_init(port: int, hostname: Optional[str] = None):
@@ -38,7 +40,8 @@ class DesignerPlugin:
                 port=port,
                 hostname=hostname,
                 url=options.get('url', None),
-                requires_session=options.get('requiresSession', False)
+                requires_session=options.get('requiresSession', False),
+                is_disguise=options.get('isDisguise', False)
             )
     
     @property
@@ -52,6 +55,7 @@ class DesignerPlugin:
                 b"u": self.url.encode(),
                 b"t": b'web',
                 b"s": b'true' if self.requires_session else b'false',
+                b"d": b'true' if self.is_disguise else b'false',
             },
             server=f"{self.hostname}.local."
         )
