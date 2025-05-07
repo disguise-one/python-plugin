@@ -1,25 +1,61 @@
 from zeroconf import ServiceInfo, Zeroconf
 from zeroconf.asyncio import AsyncZeroconf
 import asyncio, socket
-from typing import Optional
+from typing import Dict, Optional
+from json import load as json_load
 
 class DesignerPlugin:
-    "Publish a plugin for the Disguise Designer application."
-    def __init__(self, name: str, port: int, hostname: Optional[str]=None):
+    """When used as a context manager (using the `with` statement), publish a plugin using DNS-SD for the Disguise Designer application"""
+
+    def __init__(self,
+                 name: str,
+                 port: int,
+                 hostname: Optional[str] = None,
+                 url: Optional[str] = None,
+                 requires_session: bool = False,
+                 is_disguise: bool = False):
         self.name = name
         self.port = port
         self.hostname = hostname or socket.gethostname()
+        self.url = url or f"http://{self.hostname}:{port}"
+        self.requires_session = requires_session
+        self.is_disguise = is_disguise
 
+    @staticmethod
+    def default_init(port: int, hostname: Optional[str] = None):
+        """Initialize the plugin options with the values in d3plugin.json."""
+        return DesignerPlugin.from_json_file(
+            file_path="./d3plugin.json",
+            port=port,
+            hostname=hostname
+        )
+
+    @staticmethod
+    def from_json_file(file_path, port: int, hostname: Optional[str] = None):
+        """Convert a JSON file (expected d3plugin.json) to PluginOptions. hostname and port are required."""
+        with open(file_path, 'r') as f:
+            options = json_load(f)
+            return DesignerPlugin(
+                name=options['name'],
+                port=port,
+                hostname=hostname,
+                url=options.get('url', None),
+                requires_session=options.get('requiresSession', False),
+                is_disguise=options.get('isDisguise', False)
+            )
+    
     @property
     def service_info(self):
-        """Create and return the ServiceInfo object."""
+        """Convert the options to a dictionary suitable for DNS-SD service properties."""
         return ServiceInfo(
             "_d3plugin._tcp.local.",
-            f"{self.name}._d3plugin._tcp.local.",
+            name=f"{self.name}._d3plugin._tcp.local.",
             port=self.port,
             properties={
-                'pluginType': 'web',
-                'hostname': self.hostname
+                b"u": self.url.encode(),
+                b"t": b'web',
+                b"s": b'true' if self.requires_session else b'false',
+                b"d": b'true' if self.is_disguise else b'false',
             },
             server=f"{self.hostname}.local."
         )
