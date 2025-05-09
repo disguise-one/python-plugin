@@ -17,6 +17,7 @@ class DesignerPlugin:
         self.name = name
         self.port = port
         self.hostname = hostname or socket.gethostname()
+        self.custom_url = url
         self.url = url or f"http://{self.hostname}:{port}"
         self.requires_session = requires_session
         self.is_disguise = is_disguise
@@ -47,16 +48,19 @@ class DesignerPlugin:
     @property
     def service_info(self):
         """Convert the options to a dictionary suitable for DNS-SD service properties."""
+        properties={
+            b"t": b'web',
+            b"s": b'true' if self.requires_session else b'false',
+            b"d": b'true' if self.is_disguise else b'false',
+        }
+        if self.custom_url:
+            properties[b"u"] = self.custom_url.encode()
+
         return ServiceInfo(
             "_d3plugin._tcp.local.",
             name=f"{self.name}._d3plugin._tcp.local.",
             port=self.port,
-            properties={
-                b"u": self.url.encode(),
-                b"t": b'web',
-                b"s": b'true' if self.requires_session else b'false',
-                b"d": b'true' if self.is_disguise else b'false',
-            },
+            properties=properties,
             server=f"{self.hostname}.local."
         )
 

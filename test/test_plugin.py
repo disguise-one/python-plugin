@@ -58,7 +58,7 @@ class ParsingTests(TestCase):
                 self.assertEqual(service_info.type, "_d3plugin._tcp.local.")
                 self.assertEqual(service_info.port, 9999)
                 self.assertEqual(service_info.server, f"{plugin.hostname}.local.")
-                self.assertEqual(service_info.properties[b"u"], f"http://{plugin.hostname}:9999".encode())
+                self.assertFalse(b"u" in service_info.properties)
                 self.assertEqual(service_info.properties[b"t"], b"web")
                 self.assertEqual(service_info.properties[b"s"], b"false")
 
@@ -80,7 +80,7 @@ class ParsingTests(TestCase):
                 self.assertEqual(service_info.type, "_d3plugin._tcp.local.")
                 self.assertEqual(service_info.port, 9999)
                 self.assertEqual(service_info.server, f"{plugin.hostname}.local.")
-                self.assertEqual(service_info.properties[b"u"], f"http://{plugin.hostname}:9999".encode())
+                self.assertFalse(b"u" in service_info.properties)
                 self.assertEqual(service_info.properties[b"t"], b"web")
 
     def test_url_override(self):
