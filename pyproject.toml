@@ -19,6 +19,9 @@ classifiers = [
     "Operating System :: OS Independent"
 ]
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [project.urls]
 Homepage = "https://github.com/disguise-one/python-plugin"
 Issues = "https://github.com/disguise-one/python-plugin/issues"
