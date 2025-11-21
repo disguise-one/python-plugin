@@ -1,7 +1,10 @@
-from unittest.mock import patch, mock_open
+from json import JSONDecodeError
+from json import dumps as json_dumps
 from unittest import TestCase
-from json import dumps as json_dumps, JSONDecodeError
+from unittest.mock import mock_open, patch
+
 from . import DesignerPlugin
+
 
 def _escaped(name):
     """Escape the name for Zeroconf."""
@@ -76,7 +79,7 @@ class ParsingTests(TestCase):
                 _zeroconf().register_service.assert_called_once()
                 service_info = _zeroconf(
                 ).register_service.mock_calls[0].args[0]
-                self.assertEqual(service_info.name, f"Different Name._d3plugin._tcp.local.")
+                self.assertEqual(service_info.name, "Different Name._d3plugin._tcp.local.")
                 self.assertEqual(service_info.type, "_d3plugin._tcp.local.")
                 self.assertEqual(service_info.port, 9999)
                 self.assertEqual(service_info.server, f"{plugin.hostname}.local.")
