@@ -11,7 +11,6 @@ authors = [
     { name = "Taegyun Ha", email = "taegyun.ha@disguise.one" }
 ]
 dependencies = [
-    "pydantic>=2.12.4",
     "zeroconf>=0.39.0",
 ]
 requires-python = ">=3.11"
@@ -34,6 +33,7 @@ Issues = "https://github.com/disguise-one/python-plugin/issues"
 dev = [
     "mypy>=1.18.2",
     "pre-commit>=4.4.0",
+    "pytest>=9.0.1",
     "ruff>=0.14.5",
 ]
 
@@ -92,3 +92,14 @@ show_column_numbers = true
 [[tool.mypy.overrides]]
 module = "zeroconf.*"
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--strict-config",
+]

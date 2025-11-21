@@ -2,15 +2,8 @@ import asyncio
 import socket
 from json import load as json_load
 
-from pydantic import BaseModel, Field
 from zeroconf import ServiceInfo, Zeroconf
 from zeroconf.asyncio import AsyncZeroconf
-
-
-class DesignerPluginConfig(BaseModel):
-    name: str = Field(description="Plugin name to publish")
-    requiresSession: bool = Field()
-    url: str | None = Field(default=None)
 
 
 class DesignerPlugin:
