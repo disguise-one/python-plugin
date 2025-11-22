@@ -1,3 +1,8 @@
+"""
+MIT License
+Copyright (c) 2025 Disguise Technologies ltd
+"""
+
 import asyncio
 import socket
 from json import load as json_load
@@ -37,7 +42,9 @@ class DesignerPlugin:
         )
 
     @staticmethod
-    def from_json_file(file_path: str, port: int, hostname: str | None = None) -> "DesignerPlugin":
+    def from_json_file(
+        file_path: str, port: int, hostname: str | None = None
+    ) -> "DesignerPlugin":
         """Convert a JSON file (expected d3plugin.json) to PluginOptions. hostname and port are required."""
         with open(file_path) as f:
             options = json_load(f)

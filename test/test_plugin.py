@@ -1,3 +1,8 @@
+"""
+MIT License
+Copyright (c) 2025 Disguise Technologies ltd
+"""
+
 from json import JSONDecodeError
 from json import dumps as json_dumps
 from unittest import TestCase

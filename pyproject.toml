@@ -13,6 +13,7 @@ authors = [
 dependencies = [
     "aiohttp>=3.13.2",
     "pydantic>=2.12.4",
+    "requests>=2.32.5",
     "zeroconf>=0.39.0",
 ]
 requires-python = ">=3.11"
@@ -43,7 +44,6 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 100
 target-version = "py311"
 exclude = [
     "test",
