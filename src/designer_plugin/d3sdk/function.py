@@ -105,8 +105,9 @@ def extract_function_info(func: Callable[..., Any]) -> FunctionInfo:
     first_node_py27 = convert_function_to_py27(first_node)
     source_code_py27: str = ast.unparse(first_node_py27)
 
+    body_nodes_py27: list[ast.stmt] = first_node_py27.body
     body_py27: str = ""
-    for stmt in body_nodes:
+    for stmt in body_nodes_py27:
         body_py27 += ast.unparse(stmt) + "\n"
 
     return FunctionInfo(
@@ -114,7 +115,7 @@ def extract_function_info(func: Callable[..., Any]) -> FunctionInfo:
         source_code_py27=source_code_py27,
         name=function_name,
         body=body.strip(),
-        body_py27=body_py27,
+        body_py27=body_py27.strip(),
         args=args,
     )
 

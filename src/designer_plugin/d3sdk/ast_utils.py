@@ -171,7 +171,7 @@ class ConvertToPython27(ast.NodeTransformer):
 
         return ast.Assign(
             targets=[node.target],
-            value=node.value,
+            value=self.visit(node.value),  # Recursively transform the value
             lineno=node.lineno,
             col_offset=node.col_offset,
         )

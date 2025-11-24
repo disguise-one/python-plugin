@@ -350,6 +350,114 @@ class TestConvertToPython27Transformer:
         # Verify the complete conversion: f"Dict: {{key: {value}}}" -> "Dict: {{key: {}}}".format(value)
         assert ast.unparse(assign_stmt.value) == "'Dict: {{key: {}}}'.format(value)"
 
+    def test_convert_fstring_with_literal_braces_and_intermediate_variable(self):
+        """Test f-string with literal braces using an intermediate variable with type annotations."""
+        source = textwrap.dedent("""
+            def my_function(value: str) -> str:
+                my_message: str = value
+                message = f"Dict: {{key: {my_message}}}"
+                return message
+        """)
+
+        tree = ast.parse(source)
+        transformer = ConvertToPython27()
+        transformed = transformer.visit(tree)
+
+        func = transformed.body[0]
+        assert isinstance(func, ast.FunctionDef)
+
+        # Type annotations should be removed
+        assert func.returns is None
+        assert func.args.args[0].annotation is None
+
+        # First assignment: my_message = value (type annotation removed)
+        first_assign = func.body[0]
+        assert isinstance(first_assign, ast.Assign)
+        assert not isinstance(first_assign, ast.AnnAssign)
+        assert ast.unparse(first_assign.targets[0]) == "my_message"
+        assert ast.unparse(first_assign.value) == "value"
+
+        # Second assignment: message = f"Dict: {{key: {my_message}}}" converted to .format()
+        second_assign = func.body[1]
+        assert isinstance(second_assign, ast.Assign)
+
+        # Should be a .format() call
+        assert isinstance(second_assign.value, ast.Call)
+        assert isinstance(second_assign.value.func, ast.Attribute)
+        assert second_assign.value.func.attr == "format"
+
+        # The format string should preserve the escaped braces
+        assert isinstance(second_assign.value.func.value, ast.Constant)
+        assert second_assign.value.func.value.value == "Dict: {{key: {}}}"
+
+        # It should have one argument (my_message)
+        assert len(second_assign.value.args) == 1
+        assert ast.unparse(second_assign.value.args[0]) == "my_message"
+
+        # Verify the complete conversion
+        assert ast.unparse(second_assign.value) == "'Dict: {{key: {}}}'.format(my_message)"
+
+    def test_convert_fstring_in_annotated_assignment_with_nested_call(self):
+        """Test f-string nested in function call within annotated assignment.
+
+        This is a regression test for a bug where f-strings inside annotated assignments
+        were not being converted because visit_AnnAssign was not recursively visiting
+        the value expression.
+        """
+        source = textwrap.dedent("""
+            def simple_script(surface_name: str) -> dict[str, str]:
+                surface: Screen2 = resourceManager.load(
+                    Path(f"objects/screen2/{surface_name}.apx"),
+                    Screen2
+                )
+                return {"name": surface.description}
+        """)
+
+        tree = ast.parse(source)
+        transformer = ConvertToPython27()
+        transformed = transformer.visit(tree)
+
+        func = transformed.body[0]
+        assert isinstance(func, ast.FunctionDef)
+
+        # Type annotations should be removed
+        assert func.returns is None
+        assert func.args.args[0].annotation is None
+
+        # First statement: annotated assignment converted to regular assignment
+        first_assign = func.body[0]
+        assert isinstance(first_assign, ast.Assign)
+        assert not isinstance(first_assign, ast.AnnAssign)
+
+        # The f-string inside the Path() call should be converted to .format()
+        # The structure is: surface = resourceManager.load(Path(...), Screen2)
+        # We need to check the first argument of resourceManager.load() which is Path(...)
+        load_call = first_assign.value
+        assert isinstance(load_call, ast.Call)
+
+        # First argument is Path(...)
+        path_call = load_call.args[0]
+        assert isinstance(path_call, ast.Call)
+
+        # The argument to Path() should be a .format() call, not an f-string
+        format_call = path_call.args[0]
+        assert isinstance(format_call, ast.Call)
+        assert isinstance(format_call.func, ast.Attribute)
+        assert format_call.func.attr == "format"
+
+        # Verify the format string
+        assert isinstance(format_call.func.value, ast.Constant)
+        assert format_call.func.value.value == "objects/screen2/{}.apx"
+
+        # Verify the format argument is surface_name
+        assert len(format_call.args) == 1
+        assert ast.unparse(format_call.args[0]) == "surface_name"
+
+        # Verify the complete unparsed output doesn't contain f-strings
+        unparsed = ast.unparse(first_assign)
+        assert "f'" not in unparsed and 'f"' not in unparsed
+        assert ".format(" in unparsed
+
     def test_convert_fstring_with_complex_expression(self):
         """Test that f-strings with complex expressions are converted correctly."""
         source = textwrap.dedent("""
