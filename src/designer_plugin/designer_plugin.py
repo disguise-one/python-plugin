@@ -18,10 +18,10 @@ class DesignerPlugin:
         requires_session: bool = False,
         is_disguise: bool = False,
     ):
-        self.name: str = name
-        self.port: int = port
-        self.hostname: str = hostname or socket.gethostname()
-        self.custom_url: str | None = url
+        self.name = name
+        self.port = port
+        self.hostname = hostname or socket.gethostname()
+        self.custom_url = url
         self.url = url or f"http://{self.hostname}:{port}"
         self.requires_session = requires_session
         self.is_disguise = is_disguise
