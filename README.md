@@ -10,7 +10,7 @@ To install the plugin, use pip:
 pip install git+https://github.com/disguise-one/python-plugin
 ```
 
-## Usage
+## Publish Plugin
 
 The `DesignerPlugin` class allows you to publish a plugin for the Disguise Designer application. The `port` parameter corresponds to an HTTP server that serves the plugin's web user interface. Below is an example of how to use it (without a server, for clarity).
 
@@ -51,7 +51,7 @@ async def main():
 asyncio.run(main())
 ```
 
-## Plugin options
+### Publish options
 
 If you would prefer not to use the `d3plugin.json` file, construct the `DesignerPlugin` object directly. The plugin's name and port number are required parameters. Optionally, the plugin can specify `hostname`, which can be used to direct Designer to a specific hostname when opening the plugin's web UI, and other metadata parameters are available, also.
 
