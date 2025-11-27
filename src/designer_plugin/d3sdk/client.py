@@ -328,13 +328,15 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
 
     @asynccontextmanager
     async def async_session(
-        self, hostname: str, port: int, module_name: str | None = None
+        self, hostname: str, port: int, register_module: bool = True, module_name: str | None = None
     ):
         """Async context manager for plugin session with Designer.
 
         Args:
             hostname: The hostname of the Designer instance.
             port: The port number of the Designer instance.
+            register_module: Whether to register the module. Set to False when the
+                module has already been registered with Designer.
             module_name: Optional module name to override the default.
 
         Yields:
@@ -346,7 +348,8 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
 
             self.hostname = hostname
             self.port = port
-            await self._aregister(hostname, port)
+            if register_module:
+                await self._aregister(hostname, port)
             print("Entering D3PluginModule context")
             yield self
         finally:
@@ -355,12 +358,14 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
             print("Exiting D3PluginModule context")
 
     @contextmanager
-    def session(self, hostname: str, port: int, module_name: str | None = None):
+    def session(self, hostname: str, port: int, register_module: bool = True, module_name: str | None = None):
         """Sync context manager for plugin session with Designer.
 
         Args:
             hostname: The hostname of the Designer instance.
             port: The port number of the Designer instance.
+            register_module: Whether to register the module. Set to False when the 
+                module has already been registered with Designer.
             module_name: Optional module name to override the default.
 
         Yields:
@@ -372,7 +377,8 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
 
             self.hostname = hostname
             self.port = port
-            self._register(hostname, port)
+            if register_module:
+                self._register(hostname, port)
             print("Entering D3PluginModule context")
             yield self
         finally:
