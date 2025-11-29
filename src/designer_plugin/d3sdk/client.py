@@ -332,7 +332,11 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
 
     @asynccontextmanager
     async def async_session(
-        self, hostname: str, port: int = D3_PLUGIN_DEFAULT_PORT, register_module: bool = True, module_name: str | None = None
+        self,
+        hostname: str,
+        port: int = D3_PLUGIN_DEFAULT_PORT,
+        register_module: bool = True,
+        module_name: str | None = None,
     ):
         """Async context manager for plugin session with Designer.
 
@@ -362,7 +366,13 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
             logger.debug("Exiting D3PluginModule context")
 
     @contextmanager
-    def session(self, hostname: str, port: int = D3_PLUGIN_DEFAULT_PORT, register_module: bool = True, module_name: str | None = None):
+    def session(
+        self,
+        hostname: str,
+        port: int = D3_PLUGIN_DEFAULT_PORT,
+        register_module: bool = True,
+        module_name: str | None = None,
+    ):
         """Sync context manager for plugin session with Designer.
 
         Args:

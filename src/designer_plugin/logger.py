@@ -104,7 +104,7 @@ def enable_debug_logging(
     handler.setLevel(level)
 
     # Create and set formatter
-    fmt = format_string or '%(asctime)s [%(name)s:%(levelname)s] %(message)s'
+    fmt = format_string or "%(asctime)s [%(name)s:%(levelname)s] %(message)s"
     formatter = logging.Formatter(fmt)
     handler.setFormatter(formatter)
 

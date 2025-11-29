@@ -50,7 +50,10 @@ class D3Session(D3SessionBase):
     """
 
     def __init__(
-        self, hostname: str, port: int = D3_PLUGIN_DEFAULT_PORT, context_modules: list[str] | None = None
+        self,
+        hostname: str,
+        port: int = D3_PLUGIN_DEFAULT_PORT,
+        context_modules: list[str] | None = None,
     ) -> None:
         """Initialize synchronous Designer session.
 
@@ -180,7 +183,10 @@ class D3AsyncSession(D3SessionBase):
     """
 
     def __init__(
-        self, hostname: str, port: int = D3_PLUGIN_DEFAULT_PORT, context_modules: list[str] | None = None
+        self,
+        hostname: str,
+        port: int = D3_PLUGIN_DEFAULT_PORT,
+        context_modules: list[str] | None = None,
     ) -> None:
         """Initialize asynchronous Designer session.
 

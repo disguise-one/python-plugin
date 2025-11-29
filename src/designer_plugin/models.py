@@ -17,6 +17,7 @@ D3_PLUGIN_ENDPOINT = "api/session/python/execute"
 D3_PLUGIN_MODULE_REG_ENDPOINT = "api/session/python/registermodule"
 D3_PLUGIN_DEFAULT_PORT = 80
 
+
 ###############################################################################
 # Plugin response types
 class PluginStatusDetail(BaseModel):
@@ -82,7 +83,7 @@ class PluginResponse(BaseModel, Generic[RetType]):
 
     def debug_string(self) -> str:
         return f"""
-{'json ':{'='}<60}
+{"json ":{'='}<60}
 {self.model_dump_json(indent=2)}"""
 
 
@@ -163,10 +164,11 @@ class PluginPayload(BaseModel, Generic[RetType]):
 
     def debug_string(self) -> str:
         return f"""
-{'json ':{'='}<60}
+{"json ":{'='}<60}
 {self.model_dump_json(indent=2)}
-{'script ':{'='}<60}
+{"script ":{'='}<60}
 {self.script}"""
+
 
 class RegisterPayload(BaseModel):
     """Payload for registering a Python module with Designer."""
@@ -176,7 +178,7 @@ class RegisterPayload(BaseModel):
 
     def debug_string(self) -> str:
         return f"""
-{'json ':{'='}<60}
+{"json ":{'='}<60}
 {self.model_dump_json(indent=2)}
-{'contents ':{'='}<60}
+{"contents ":{'='}<60}
 {self.contents}"""

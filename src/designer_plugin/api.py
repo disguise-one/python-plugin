@@ -25,6 +25,7 @@ from designer_plugin.models import (
 
 logger: logging.Logger = logging.getLogger(__name__)
 
+
 ###############################################################################
 # Plugin endpoint constants
 def get_plugin_endpoint_url(hostname: str, port: int) -> str:
@@ -154,7 +155,7 @@ async def d3_api_aplugin(
         timeout=aiohttp.ClientTimeout(timeout_sec) if timeout_sec else None,
     )
     try:
-        plugin_response: PluginResponse[RetType] = PluginResponse[RetType].model_validate(response)
+        plugin_response = PluginResponse[RetType].model_validate(response)
 
         if plugin_response.pythonLog:
             print(plugin_response.pythonLog)
@@ -248,7 +249,7 @@ def d3_api_plugin(
     )
 
     try:
-        plugin_response: PluginResponse[RetType] = PluginResponse[RetType].model_validate(response)
+        plugin_response = PluginResponse[RetType].model_validate(response)
 
         if plugin_response.pythonLog:
             print(plugin_response.pythonLog)
