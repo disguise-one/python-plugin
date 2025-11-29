@@ -52,6 +52,7 @@ without being overwhelmed by logs from the entire package.
 
 import logging
 import sys
+from typing import Any
 
 # Package root logger name
 LOGGER_NAME = "designer_plugin"
@@ -62,7 +63,7 @@ logging.getLogger(LOGGER_NAME).addHandler(logging.NullHandler())
 
 def enable_debug_logging(
     level: int = logging.DEBUG,
-    stream: object | None = None,
+    stream: Any | None = None,
     format_string: str | None = None,
 ) -> None:
     """

@@ -7,6 +7,7 @@ import ast
 import inspect
 import textwrap
 import types
+from typing import Any
 
 
 ###############################################################################
@@ -27,7 +28,7 @@ def get_source(frame: types.FrameType) -> str | None:
     return textwrap.dedent("".join(source_lines)) if source_lines else None
 
 
-def get_class_node(tree, class_name: str) -> ast.ClassDef | None:
+def get_class_node(tree: ast.Module, class_name: str) -> ast.ClassDef | None:
     """Find a class definition node by name in an AST.
 
     Args:
@@ -45,7 +46,7 @@ def get_class_node(tree, class_name: str) -> ast.ClassDef | None:
 
 ###############################################################################
 # AST node filtering utilities
-def filter_base_classes(class_node: ast.ClassDef):
+def filter_base_classes(class_node: ast.ClassDef) -> None:
     """Remove all base classes from a class definition for Python 2.7 compatibility.
 
     This function modifies the class_node in-place by clearing its base class list.
@@ -96,7 +97,7 @@ class ConvertToPython27(ast.NodeTransformer):
     - Converts f-strings to .format() style (f"Hello {name}" → "Hello {}".format(name))
     """
 
-    def visit_FunctionDef(self, node: ast.FunctionDef):
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.FunctionDef:
         """Remove return type annotation from function definitions.
 
         Transforms 'def func() -> int:' to 'def func():' for Python 2.7 compatibility.
@@ -111,7 +112,7 @@ class ConvertToPython27(ast.NodeTransformer):
         self.generic_visit(node)
         return node
 
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> ast.FunctionDef:
         """Convert async function to regular function for Python 2.7 compatibility.
 
         Transforms 'async def func() -> int:' to 'def func():' by:
@@ -141,7 +142,7 @@ class ConvertToPython27(ast.NodeTransformer):
         # Now run normal FunctionDef logic + recurse
         return self.visit_FunctionDef(new)
 
-    def visit_arg(self, node: ast.arg):
+    def visit_arg(self, node: ast.arg) -> ast.arg:
         """Remove type annotation from argument.
 
         Args:
@@ -153,7 +154,7 @@ class ConvertToPython27(ast.NodeTransformer):
         node.annotation = None
         return node
 
-    def visit_AnnAssign(self, node: ast.AnnAssign):
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> ast.Assign | None:
         """Remove type hint.
 
         Converts type-annotated variable assignments (e.g., 'x: int = 5') into regular
@@ -176,7 +177,7 @@ class ConvertToPython27(ast.NodeTransformer):
             col_offset=node.col_offset,
         )
 
-    def visit_Await(self, node: ast.Await):
+    def visit_Await(self, node: ast.Await) -> Any:
         """Remove await keyword.
 
         Remove await keyword and return the underlying expression.
@@ -190,7 +191,7 @@ class ConvertToPython27(ast.NodeTransformer):
         """
         return self.visit(node.value)
 
-    def visit_JoinedStr(self, node: ast.JoinedStr):
+    def visit_JoinedStr(self, node: ast.JoinedStr) -> ast.Call:
         # Don't use generic_visit here because we need to handle format_spec specially
         # Process the node values manually to preserve format specs
 
@@ -272,7 +273,7 @@ def convert_function_to_py27(
         (modified) node. For AsyncFunctionDef input, returns a new FunctionDef node.
     """
     transformer = ConvertToPython27()
-    return transformer.visit(function_node)
+    return transformer.visit(function_node) #  type: ignore
 
 
 def convert_class_to_py27(class_node: ast.ClassDef) -> None:

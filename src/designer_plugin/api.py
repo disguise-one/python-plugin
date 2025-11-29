@@ -71,7 +71,7 @@ def d3_api_request(
     hostname: str,
     port: int,
     url_endpoint: str,
-    **kwargs,
+    **kwargs: Any,
 ) -> Any:
     """Make a synchronous HTTP request to Designer API.
 

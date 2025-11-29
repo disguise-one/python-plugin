@@ -81,7 +81,7 @@ class D3Session(D3SessionBase):
                 )
         return self
 
-    def __exit__(self, _type, _value, _traceback) -> None:
+    def __exit__(self, _type: Any, _value: Any, _traceback: Any) -> None:
         """Exit context manager."""
         pass
 
@@ -119,7 +119,7 @@ class D3Session(D3SessionBase):
         """
         return d3_api_plugin(self.hostname, self.port, payload, timeout_sec)
 
-    def request(self, method: Method, url_endpoint: str, **kwargs):
+    def request(self, method: Method, url_endpoint: str, **kwargs: Any) -> Any:
         """Make a generic HTTP request to Designer API.
 
         Args:
@@ -214,7 +214,7 @@ class D3AsyncSession(D3SessionBase):
                 )
         return self
 
-    async def __aexit__(self, _exc_type, _exc, _tb) -> None:
+    async def __aexit__(self, _exc_type: Any, _exc: Any, _tb: Any) -> None:
         """Exit async context manager."""
         pass
 

@@ -38,7 +38,7 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-def build_payload(self, method_name: str, args, kwargs) -> PluginPayload[Any]:
+def build_payload(self: Any, method_name: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> PluginPayload[Any]:
     """Build plugin payload for remote method execution.
 
     Args:
@@ -62,7 +62,7 @@ def build_payload(self, method_name: str, args, kwargs) -> PluginPayload[Any]:
     return PluginPayload[Any](moduleName=self.module_name, script=script)
 
 
-def create_d3_plugin_method_wrapper(method_name: str, original_method: Callable[P, T]):
+def create_d3_plugin_method_wrapper(method_name: str, original_method: Callable[P, T]) -> Callable[..., Any]:
     """Create a wrapper that executes a method remotely via Designer API calls.
 
     This wrapper intercepts method calls and instead of executing locally:
@@ -84,7 +84,7 @@ def create_d3_plugin_method_wrapper(method_name: str, original_method: Callable[
     if inspect.iscoroutinefunction(original_method):
         # Create async wrapper that uses async Designer API call
         @functools.wraps(original_method)
-        async def async_wrapper(self, *args, **kwargs):
+        async def async_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
             payload = build_payload(self, method_name, args, kwargs)
             response: PluginResponse[T] = await d3_api_aplugin(
                 self._hostname, self._port, payload
@@ -95,7 +95,7 @@ def create_d3_plugin_method_wrapper(method_name: str, original_method: Callable[
     else:
         # Create sync wrapper that uses synchronous Designer API call
         @functools.wraps(original_method)
-        def sync_wrapper(self, *args, **kwargs):
+        def sync_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
             payload = build_payload(self, method_name, args, kwargs)
             response: PluginResponse[T] = d3_api_plugin(
                 self._hostname, self._port, payload
@@ -105,7 +105,7 @@ def create_d3_plugin_method_wrapper(method_name: str, original_method: Callable[
         return sync_wrapper
 
 
-def create_d3_payload_wrapper(method_name: str, original_method: Callable[P, T]):
+def create_d3_payload_wrapper(method_name: str, original_method: Callable[P, T]) -> Callable[..., PluginPayload[T]]:
     """Create a wrapper that generates plugin payload without executing.
 
     Args:
@@ -117,7 +117,7 @@ def create_d3_payload_wrapper(method_name: str, original_method: Callable[P, T])
     """
 
     @functools.wraps(original_method)
-    def sync_wrapper(self, *args, **kwargs) -> PluginPayload[T]:
+    def sync_wrapper(self: Any, *args: Any, **kwargs: Any) -> PluginPayload[T]:
         return build_payload(self, method_name, args, kwargs)
 
     return sync_wrapper
@@ -165,7 +165,7 @@ class D3PluginClientMeta(type):
     instance_code_template: str
     instance_code: str
 
-    def __new__(cls, name, bases, attrs):
+    def __new__(cls, name: str, bases: tuple[type, ...], attrs: dict[str, Any]) -> type:
         # Skip the base class
         if name == "D3PluginClient":
             return super().__new__(cls, name, bases, attrs)
@@ -234,7 +234,7 @@ class D3PluginClientMeta(type):
 
         return super().__new__(cls, name, bases, attrs)
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         """Create an instance and generate its remote instantiation code.
 
         This method is called when a class instance is created (e.g., MyPlugin(...)).
@@ -318,17 +318,17 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         instance_code: The code used to instantiate the plugin remotely (set on init)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._hostname: str | None = None
         self._port: int | None = None
 
-    def in_session(self):
+    def in_session(self) -> bool:
         """Check if the client is currently in an active session.
 
         Returns:
             True if both hostname and port are set, False otherwise.
         """
-        return self._hostname and self._port
+        return bool(self._hostname) and bool(self._port)
 
     @asynccontextmanager
     async def async_session(
@@ -337,7 +337,7 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         port: int = D3_PLUGIN_DEFAULT_PORT,
         register_module: bool = True,
         module_name: str | None = None,
-    ):
+    ) -> Any:
         """Async context manager for plugin session with Designer.
 
         Args:
@@ -372,7 +372,7 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         port: int = D3_PLUGIN_DEFAULT_PORT,
         register_module: bool = True,
         module_name: str | None = None,
-    ):
+    ) -> Any:
         """Sync context manager for plugin session with Designer.
 
         Args:
@@ -435,6 +435,6 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
             RegisterPayload containing moduleName and contents for registration.
         """
         return RegisterPayload(
-            moduleName=self.module_name,  # type: ignore[attr-defined]
+            moduleName=self.module_name,
             contents=self._get_register_module_content(),
         )

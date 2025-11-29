@@ -58,7 +58,7 @@ class PluginResponse(BaseModel, Generic[RetType]):
 
     @field_validator("returnValue", mode="before")
     @classmethod
-    def parse_returnValue(cls, v):
+    def parse_returnValue(cls, v: Any) -> Any:
         if isinstance(v, str):
             if v == "null":
                 return None
@@ -121,7 +121,7 @@ class PluginException(Exception):
     _traceback_str: str | None = None
     _str: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Capture current stack trace if not already provided
         if self._traceback_str is None:
             self._traceback_str = "".join(traceback.format_stack()[:-1])

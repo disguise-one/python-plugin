@@ -84,7 +84,7 @@ def extract_function_info(func: Callable[..., Any]) -> FunctionInfo:
     first_node.decorator_list.clear()
 
     # Extract blob in python 3 format
-    source_code: str = ast.unparse(first_node)
+    source_code_py3: str = ast.unparse(first_node)
 
     # Extract function name
     function_name: str = first_node.name
@@ -111,7 +111,7 @@ def extract_function_info(func: Callable[..., Any]) -> FunctionInfo:
         body_py27 += ast.unparse(stmt) + "\n"
 
     return FunctionInfo(
-        source_code=source_code,
+        source_code=source_code_py3,
         source_code_py27=source_code_py27,
         name=function_name,
         body=body.strip(),
@@ -178,7 +178,7 @@ class D3PythonScript(Generic[P, T]):
         """
         return getattr(self._function, name)
 
-    def _args_to_assign(self, *args, **kwargs) -> str:
+    def _args_to_assign(self, *args: Any, **kwargs: Any) -> str:
         """Convert function arguments to assignment statements for standalone execution.
 
         Args:
@@ -242,7 +242,7 @@ class D3Function(D3PythonScript[P, T]):
 
         D3Function._available_d3functions[module_name].add(self)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Check equality based on function name for unique registration.
 
         Returns:
@@ -307,7 +307,7 @@ class D3Function(D3PythonScript[P, T]):
         """
         return self._module_name
 
-    def _args_to_string(self, *args, **kwargs) -> str:
+    def _args_to_string(self, *args: Any, **kwargs: Any) -> str:
         """Convert function arguments to a string representation for function call generation.
 
         Args:
