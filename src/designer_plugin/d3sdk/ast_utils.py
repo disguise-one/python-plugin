@@ -273,7 +273,7 @@ def convert_function_to_py27(
         (modified) node. For AsyncFunctionDef input, returns a new FunctionDef node.
     """
     transformer = ConvertToPython27()
-    return transformer.visit(function_node) #  type: ignore
+    return transformer.visit(function_node)  #  type: ignore
 
 
 def convert_class_to_py27(class_node: ast.ClassDef) -> None:

@@ -38,7 +38,9 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-def build_payload(self: Any, method_name: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> PluginPayload[Any]:
+def build_payload(
+    self: Any, method_name: str, args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> PluginPayload[Any]:
     """Build plugin payload for remote method execution.
 
     Args:
@@ -62,7 +64,9 @@ def build_payload(self: Any, method_name: str, args: tuple[Any, ...], kwargs: di
     return PluginPayload[Any](moduleName=self.module_name, script=script)
 
 
-def create_d3_plugin_method_wrapper(method_name: str, original_method: Callable[P, T]) -> Callable[..., Any]:
+def create_d3_plugin_method_wrapper(
+    method_name: str, original_method: Callable[P, T]
+) -> Callable[..., Any]:
     """Create a wrapper that executes a method remotely via Designer API calls.
 
     This wrapper intercepts method calls and instead of executing locally:
@@ -105,7 +109,9 @@ def create_d3_plugin_method_wrapper(method_name: str, original_method: Callable[
         return sync_wrapper
 
 
-def create_d3_payload_wrapper(method_name: str, original_method: Callable[P, T]) -> Callable[..., PluginPayload[T]]:
+def create_d3_payload_wrapper(
+    method_name: str, original_method: Callable[P, T]
+) -> Callable[..., PluginPayload[T]]:
     """Create a wrapper that generates plugin payload without executing.
 
     Args:
