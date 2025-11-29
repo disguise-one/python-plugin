@@ -18,6 +18,7 @@ from designer_plugin.api import (
 )
 from designer_plugin.d3sdk.function import D3Function
 from designer_plugin.models import (
+    D3_PLUGIN_DEFAULT_PORT,
     PluginPayload,
     PluginResponse,
     RegisterPayload,
@@ -49,7 +50,7 @@ class D3Session(D3SessionBase):
     """
 
     def __init__(
-        self, hostname: str, port: int, context_modules: list[str] | None = None
+        self, hostname: str, port: int = D3_PLUGIN_DEFAULT_PORT, context_modules: list[str] | None = None
     ) -> None:
         """Initialize synchronous Designer session.
 
@@ -179,7 +180,7 @@ class D3AsyncSession(D3SessionBase):
     """
 
     def __init__(
-        self, hostname: str, port: int, context_modules: list[str] | None = None
+        self, hostname: str, port: int = D3_PLUGIN_DEFAULT_PORT, context_modules: list[str] | None = None
     ) -> None:
         """Initialize asynchronous Designer session.
 

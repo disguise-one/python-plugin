@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, TypeAdapter, field_validator
 # Plugin endpoint constants
 D3_PLUGIN_ENDPOINT = "api/session/python/execute"
 D3_PLUGIN_MODULE_REG_ENDPOINT = "api/session/python/registermodule"
-
+D3_PLUGIN_DEFAULT_PORT = 80
 
 ###############################################################################
 # Plugin response types

@@ -26,6 +26,7 @@ from designer_plugin.d3sdk.ast_utils import (
     get_source,
 )
 from designer_plugin.models import (
+    D3_PLUGIN_DEFAULT_PORT,
     PluginPayload,
     PluginResponse,
     RegisterPayload,
@@ -86,7 +87,7 @@ def create_d3_plugin_method_wrapper(method_name: str, original_method: Callable[
         async def async_wrapper(self, *args, **kwargs):
             payload = build_payload(self, method_name, args, kwargs)
             response: PluginResponse[T] = await d3_api_aplugin(
-                self.hostname, self.port, payload
+                self._hostname, self._port, payload
             )
             return response.returnValue
 
@@ -97,7 +98,7 @@ def create_d3_plugin_method_wrapper(method_name: str, original_method: Callable[
         def sync_wrapper(self, *args, **kwargs):
             payload = build_payload(self, method_name, args, kwargs)
             response: PluginResponse[T] = d3_api_plugin(
-                self.hostname, self.port, payload
+                self._hostname, self._port, payload
             )
             return response.returnValue
 
@@ -318,8 +319,8 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
     """
 
     def __init__(self):
-        self.hostname: str | None = None
-        self.port: int | None = None
+        self._hostname: str | None = None
+        self._port: int | None = None
 
     def in_session(self):
         """Check if the client is currently in an active session.
@@ -327,11 +328,11 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         Returns:
             True if both hostname and port are set, False otherwise.
         """
-        return self.hostname and self.port
+        return self._hostname and self._port
 
     @asynccontextmanager
     async def async_session(
-        self, hostname: str, port: int, register_module: bool = True, module_name: str | None = None
+        self, hostname: str, port: int = D3_PLUGIN_DEFAULT_PORT, register_module: bool = True, module_name: str | None = None
     ):
         """Async context manager for plugin session with Designer.
 
@@ -349,19 +350,19 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
             if module_name:
                 self.module_name = module_name
 
-            self.hostname = hostname
-            self.port = port
+            self._hostname = hostname
+            self._port = port
             if register_module:
                 await self._aregister(hostname, port)
             logger.debug("Entering D3PluginModule context")
             yield self
         finally:
-            self.hostname = None
-            self.port = None
+            self._hostname = None
+            self._port = None
             logger.debug("Exiting D3PluginModule context")
 
     @contextmanager
-    def session(self, hostname: str, port: int, register_module: bool = True, module_name: str | None = None):
+    def session(self, hostname: str, port: int = D3_PLUGIN_DEFAULT_PORT, register_module: bool = True, module_name: str | None = None):
         """Sync context manager for plugin session with Designer.
 
         Args:
@@ -378,15 +379,15 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
             if module_name:
                 self.module_name = module_name
 
-            self.hostname = hostname
-            self.port = port
+            self._hostname = hostname
+            self._port = port
             if register_module:
                 self._register(hostname, port)
             logger.debug("Entering D3PluginModule context")
             yield self
         finally:
-            self.hostname = None
-            self.port = None
+            self._hostname = None
+            self._port = None
             logger.debug("Exiting D3PluginModule context")
 
     async def _aregister(self, hostname: str, port: int) -> None:
