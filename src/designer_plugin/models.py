@@ -80,6 +80,11 @@ class PluginResponse(BaseModel, Generic[RetType]):
         adapter = TypeAdapter(castType)
         return adapter.validate_python(self.returnValue)
 
+    def debug_string(self) -> str:
+        return f"""
+{'json ':{'='}<60}
+{self.model_dump_json(indent=2)}"""
+
 
 class PluginError(PluginResponse[None]):
     """Error response when plugin execution fails."""
@@ -136,7 +141,6 @@ class PluginException(Exception):
                     f"- messages   :\n{self.status.message}{details_str}",
                     f"- d3Log      : {self.d3Log}",
                     f"- pythonLog  : {self.pythonLog}",
-                    f"- Traceback  :\n{self._traceback_str.strip() if self._traceback_str else ''}",
                 ]
             )
         return self._str
@@ -157,9 +161,22 @@ class PluginPayload(BaseModel, Generic[RetType]):
     def is_module_payload(self) -> bool:
         return bool(self.moduleName)
 
+    def debug_string(self) -> str:
+        return f"""
+{'json ':{'='}<60}
+{self.model_dump_json(indent=2)}
+{'script ':{'='}<60}
+{self.script}"""
 
 class RegisterPayload(BaseModel):
     """Payload for registering a Python module with Designer."""
 
     moduleName: str = Field(description="Module name to register contents.")
     contents: str = Field(description="Python code to register with the module name.")
+
+    def debug_string(self) -> str:
+        return f"""
+{'json ':{'='}<60}
+{self.model_dump_json(indent=2)}
+{'contents ':{'='}<60}
+{self.contents}"""

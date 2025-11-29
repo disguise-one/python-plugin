@@ -6,6 +6,7 @@ Copyright (c) 2025 Disguise Technologies ltd
 import ast
 import functools
 import inspect
+import logging
 import types
 from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager
@@ -29,6 +30,8 @@ from designer_plugin.models import (
     PluginResponse,
     RegisterPayload,
 )
+
+logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -350,12 +353,12 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
             self.port = port
             if register_module:
                 await self._aregister(hostname, port)
-            print("Entering D3PluginModule context")
+            logger.debug("Entering D3PluginModule context")
             yield self
         finally:
             self.hostname = None
             self.port = None
-            print("Exiting D3PluginModule context")
+            logger.debug("Exiting D3PluginModule context")
 
     @contextmanager
     def session(self, hostname: str, port: int, register_module: bool = True, module_name: str | None = None):
@@ -364,8 +367,8 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         Args:
             hostname: The hostname of the Designer instance.
             port: The port number of the Designer instance.
-            register_module: Whether to register the module. Set to False when the 
-                module has already been registered with Designer.
+            register_module: Whether to register the module.
+                Set to False when the module has already been registered with Designer.
             module_name: Optional module name to override the default.
 
         Yields:
@@ -379,12 +382,12 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
             self.port = port
             if register_module:
                 self._register(hostname, port)
-            print("Entering D3PluginModule context")
+            logger.debug("Entering D3PluginModule context")
             yield self
         finally:
             self.hostname = None
             self.port = None
-            print("Exiting D3PluginModule context")
+            logger.debug("Exiting D3PluginModule context")
 
     async def _aregister(self, hostname: str, port: int) -> None:
         """Register the plugin module with Designer asynchronously.

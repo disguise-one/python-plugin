@@ -3,6 +3,7 @@ MIT License
 Copyright (c) 2025 Disguise Technologies ltd
 """
 
+import logging
 from enum import StrEnum
 from typing import Any, Unpack
 
@@ -22,6 +23,7 @@ from designer_plugin.models import (
     RetType,
 )
 
+logger: logging.Logger = logging.getLogger(__name__)
 
 ###############################################################################
 # Plugin endpoint constants
@@ -122,46 +124,6 @@ async def d3_api_arequest(
 
 ###############################################################################
 # API async interface
-async def d3_api_aplugin_raw(
-    hostname: str,
-    port: int,
-    json: dict[str, str],
-    timeout_sec: float | None = None,
-) -> PluginResponse:
-    """Execute a raw plugin script asynchronously on Designer.
-
-    Args:
-        hostname: The hostname of the Designer instance.
-        port: The port number of the Designer instance.
-        json: Raw JSON payload containing script to execute.
-        timeout_sec: Optional timeout in seconds for the request.
-
-    Returns:
-        PluginResponse containing the execution result.
-
-    Raises:
-        PluginException: If the plugin execution fails.
-    """
-    response: Any = await d3_api_arequest(
-        Method.POST,
-        hostname,
-        port,
-        D3_PLUGIN_ENDPOINT,
-        json=json,
-        timeout=aiohttp.ClientTimeout(timeout_sec) if timeout_sec else None,
-    )
-
-    try:
-        return PluginResponse.model_validate(response)
-    except ValidationError:
-        error_response: PluginError = PluginError.model_validate(response)
-        raise PluginException(
-            status=error_response.status,
-            d3Log=error_response.d3Log,
-            pythonLog=error_response.pythonLog,
-        ) from None
-
-
 async def d3_api_aplugin(
     hostname: str,
     port: int,
@@ -182,6 +144,7 @@ async def d3_api_aplugin(
     Raises:
         PluginException: If the plugin execution fails.
     """
+    logger.debug(f"Send plugin api:{payload.debug_string()}")
     response: Any = await d3_api_arequest(
         Method.POST,
         hostname,
@@ -191,7 +154,13 @@ async def d3_api_aplugin(
         timeout=aiohttp.ClientTimeout(timeout_sec) if timeout_sec else None,
     )
     try:
-        return PluginResponse[RetType].model_validate(response)
+        plugin_response: PluginResponse[RetType] = PluginResponse[RetType].model_validate(response)
+
+        if plugin_response.pythonLog:
+            print(plugin_response.pythonLog)
+        logger.debug(f"PluginResponse:{plugin_response.debug_string()}")
+
+        return plugin_response
     except ValidationError:
         error_response: PluginError = PluginError.model_validate(response)
         raise PluginException(
@@ -220,6 +189,8 @@ async def d3_api_aregister_module(
         PluginException: If module registration fails on Designer side.
     """
     try:
+        # logger.debug(f"Register module: {payload.moduleName}\n{payload.contents}")
+        logger.debug(f"Register module:{payload.debug_string()}")
         response: Any = await d3_api_arequest(
             Method.POST,
             hostname,
@@ -245,46 +216,6 @@ async def d3_api_aregister_module(
 
 ###############################################################################
 # API sync interface
-def d3_api_plugin_raw(
-    hostname: str,
-    port: int,
-    json: dict[str, str],
-    timeout_sec: float | None = None,
-) -> PluginResponse:
-    """Execute a raw plugin script synchronously on Designer.
-
-    Args:
-        hostname: The hostname of the Designer instance.
-        port: The port number of the Designer instance.
-        json: Raw JSON payload containing script to execute.
-        timeout_sec: Optional timeout in seconds for the request.
-
-    Returns:
-        PluginResponse containing the execution result.
-
-    Raises:
-        PluginException: If the plugin execution fails.
-    """
-    response: Any = d3_api_request(
-        Method.POST,
-        hostname,
-        port,
-        D3_PLUGIN_ENDPOINT,
-        json=json,
-        timeout=timeout_sec if timeout_sec else None,
-    )
-
-    try:
-        return PluginResponse.model_validate(response)
-    except ValidationError:
-        error_response: PluginError = PluginError.model_validate(response)
-        raise PluginException(
-            status=error_response.status,
-            d3Log=error_response.d3Log,
-            pythonLog=error_response.pythonLog,
-        ) from None
-
-
 def d3_api_plugin(
     hostname: str,
     port: int,
@@ -305,6 +236,8 @@ def d3_api_plugin(
     Raises:
         PluginException: If the plugin execution fails.
     """
+
+    logger.debug(f"Send plugin api:{payload.debug_string()}")
     response = d3_api_request(
         Method.POST,
         hostname,
@@ -315,7 +248,13 @@ def d3_api_plugin(
     )
 
     try:
-        return PluginResponse[RetType].model_validate(response)
+        plugin_response: PluginResponse[RetType] = PluginResponse[RetType].model_validate(response)
+
+        if plugin_response.pythonLog:
+            print(plugin_response.pythonLog)
+        logger.debug(f"PluginResponse:{plugin_response.debug_string()}")
+
+        return plugin_response
     except ValidationError:
         error_response: PluginError = PluginError.model_validate(response)
         raise PluginException(
@@ -347,6 +286,7 @@ def d3_api_register_module(
         PluginException: If module registration fails on Designer side.
     """
     try:
+        logger.debug(f"Register module:{payload.debug_string()}")
         response: Any = d3_api_request(
             Method.POST,
             hostname,
