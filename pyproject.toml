@@ -3,8 +3,8 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "disguise-designer-plugin"
-version = "1.1.0"
+name = "designer-plugin"
+version = "1.2.0"
 description = "A plugin for the Disguise Designer application."
 authors = [
     { name = "Tom Whittock", email = "tom.whittock@disguise.one" },
