@@ -10,7 +10,7 @@ A Python library for creating and managing plugins for Disguise Designer. This l
 To install the plugin, use pip:
 
 ```bash
-pip install git+https://github.com/disguise-one/python-plugin
+pip install designer-plugin
 ```
 
 <br/>
@@ -217,7 +217,7 @@ async with D3AsyncSession('localhost', 80, ["mymodule"]) as session:
         rename_surface_get_time.payload("surface 1", "surface 2"))
 
     # Use plugin() for full response with logs and status
-    from designer_plugin.d3sdk import PluginResponse
+    from designer_plugin import PluginResponse
     response: PluginResponse = await session.plugin(
         rename_surface_get_time.payload("surface 1", "surface 2"))
     print(f"Status: {response.status.code}")
