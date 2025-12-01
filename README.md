@@ -155,7 +155,7 @@ The Functional API provides finer control over remote execution compared to the 
 - **Payload generation**: Decorators add a `payload()` method to generate execution payloads
 - **Session management**: You manually create sessions and control when to register modules
 - **Function grouping**: Group related functions into modules for efficient reuse
-- **Response handling**: Choose between `session.plugin()` for full response (status, logs, return value) or `session.rpc()` for just the return value
+- **Response handling**: Choose between `session.execute()` for full response (status, logs, return value) or `session.rpc()` for just the return value
 
 The Functional API offers two decorators: `@d3pythonscript` and `@d3function`:
 - **`@d3pythonscript`**: 
@@ -171,7 +171,7 @@ The Functional API offers two decorators: `@d3pythonscript` and `@d3function`:
 Both `D3AsyncSession` and `D3Session` provide two methods for executing functions:
 
 - **`session.rpc(payload)`** - Returns only the return value from the function execution. Simpler for most use cases.
-- **`session.plugin(payload)`** - Returns a `PluginResponse` object containing:
+- **`session.execute(payload)`** - Returns a `PluginResponse` object containing:
   - `returnValue`: The function's return value
   - `status`: Execution status (code, message, details)
   - `d3Log`: Designer console output during execution
@@ -218,7 +218,7 @@ async with D3AsyncSession('localhost', 80, ["mymodule"]) as session:
 
     # Use plugin() for full response with logs and status
     from designer_plugin import PluginResponse
-    response: PluginResponse = await session.plugin(
+    response: PluginResponse = await session.execute(
         rename_surface_get_time.payload("surface 1", "surface 2"))
     print(f"Status: {response.status.code}")
     print(f"Return value: {response.returnValue}")

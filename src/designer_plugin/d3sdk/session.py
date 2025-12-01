@@ -100,7 +100,7 @@ class D3Session(D3SessionBase):
         Raises:
             PluginException: If the plugin execution fails.
         """
-        return self.plugin(payload, timeout_sec).returnValue
+        return self.execute(payload, timeout_sec).returnValue
 
     def plugin(
         self, payload: PluginPayload[RetType], timeout_sec: float | None = None
@@ -253,9 +253,9 @@ class D3AsyncSession(D3SessionBase):
         Raises:
             PluginException: If the plugin execution fails.
         """
-        return (await self.plugin(payload, timeout_sec)).returnValue
+        return (await self.execute(payload, timeout_sec)).returnValue
 
-    async def plugin(
+    async def execute(
         self, payload: PluginPayload[RetType], timeout_sec: float | None = None
     ) -> PluginResponse[RetType]:
         """Execute a plugin script on Designer asynchronously.
