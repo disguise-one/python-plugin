@@ -59,12 +59,14 @@ class PluginResponse(BaseModel, Generic[RetType]):
     @field_validator("returnValue", mode="before")
     @classmethod
     def parse_returnValue(cls, v: Any) -> Any:
-        if isinstance(v, str):
-            if v == "null":
-                return None
-            else:
-                return json.loads(v)
-        return v
+        if not isinstance(v, str):
+            return v
+        if v == "null":
+            return None
+        try:
+            return json.loads(v)
+        except json.JSONDecodeError:
+            return v
 
     def returnCastValue(self, castType: type[RetCastType]) -> RetCastType:
         """Validate and cast the return value to the specified type.

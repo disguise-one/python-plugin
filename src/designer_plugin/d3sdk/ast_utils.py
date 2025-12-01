@@ -59,18 +59,13 @@ def filter_base_classes(class_node: ast.ClassDef) -> None:
 
 
 def filter_init_args(class_node: ast.ClassDef) -> list[str]:
-    """Remove excluded arguments from __init__ method and extract parameter names.
-
-    This function modifies the class_node in-place by:
-    1. Removing excluded parameters from __init__ signature
-    2. Removing excluded arguments from super().__init__() calls
-    3. Returning the list of remaining parameter names (excluding 'self')
+    """Extract parameter names from the __init__ method of a class.
 
     Args:
         class_node: The class definition node to process
 
     Returns:
-        List of parameter names that remain after filtering (excluding 'self')
+        List of parameter names from __init__ (excluding 'self'), or empty list if no __init__ found
     """
     for node in class_node.body:
         if not isinstance(node, ast.FunctionDef):

@@ -3,6 +3,8 @@ MIT License
 Copyright (c) 2025 Disguise Technologies ltd
 """
 
+import pytest
+
 from designer_plugin.d3sdk.function import (
     D3Function,
     D3PythonScript,
@@ -290,3 +292,30 @@ class TestD3PythonScript:
         assert "a=5" in payload.script
         assert "b=15" in payload.script
         assert "return a + b" in payload.script
+
+    def test_d3pythonscript_args_to_assign_with_extra_args(self):
+        """Test that _args_to_assign handles extra arguments gracefully.
+
+        This test will fail with the enumerate/indexing implementation:
+            args_parts = [f"{self._function_info.args[i]}={repr(arg)}" for i, arg in enumerate(args)]
+
+        But will pass with the zip implementation:
+            args_parts = [f"{param}={repr(arg)}" for param, arg in zip(self._function_info.args, args)]
+
+        The enumerate version causes IndexError when len(args) > len(function parameters).
+        The zip version stops at the shorter sequence length.
+        """
+        @d3pythonscript
+        def test_func(a: int, b: int) -> int:
+            return a + b
+
+        # This function has 2 parameters but we're passing 3 arguments
+        # The first implementation will crash with IndexError
+        # The second implementation will silently ignore the extra argument
+        result = test_func._args_to_assign(1, 2, 3)
+
+        # Should only contain assignments for the defined parameters
+        assert "a=1" in result
+        assert "b=2" in result
+        # The extra argument should be silently ignored by the zip implementation
+        assert result.count("=") == 2  # Only 2 assignments

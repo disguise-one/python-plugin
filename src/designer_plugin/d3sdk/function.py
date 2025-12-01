@@ -189,7 +189,8 @@ class D3PythonScript(Generic[P, T]):
             String containing variable assignment statements, one per line.
         """
         args_parts = [
-            f"{self._function_info.args[i]}={repr(arg)}" for i, arg in enumerate(args)
+            f"{param}={repr(arg)}"
+            for param, arg in zip(self._function_info.args, args, strict=False)
         ]
         kwargs_parts = [f"{name}={repr(value)}" for name, value in kwargs.items()]
         return "\n".join(args_parts + kwargs_parts)

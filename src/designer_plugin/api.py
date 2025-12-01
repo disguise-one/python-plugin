@@ -201,7 +201,7 @@ async def d3_api_aregister_module(
             timeout=aiohttp.ClientTimeout(timeout_sec) if timeout_sec else None,
         )
     except Exception as e:
-        raise Exception(f"Failed to register module '{payload.moduleName}") from e
+        raise Exception(f"Failed to register module: '{payload.moduleName}'") from e
 
     plugin_response: PluginRegisterResponse = PluginRegisterResponse.model_validate(
         response

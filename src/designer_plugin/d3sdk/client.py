@@ -231,7 +231,7 @@ class D3PluginClientMeta(type):
         attrs["source_code_py27"] = f"{ast.unparse(class_node)}"
 
         # Wrap all user-defined public methods to execute remotely via D3 API
-        # Skip private methods (_*) and internal framework methods
+        # Skip internal framework methods
         for attr_name, attr_value in attrs.items():
             if callable(attr_value) and not attr_name.startswith("__"):
                 attrs[attr_name] = create_d3_plugin_method_wrapper(
@@ -318,7 +318,7 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
 
     # Use as sync context manager
     with plugin.session("localhost", 80):
-        result = await plugin.get_surface_uid("surface 1")
+        result = plugin.get_surface_uid("surface 1")
     ```
     Attributes:
         instance_code: The code used to instantiate the plugin remotely (set on init)

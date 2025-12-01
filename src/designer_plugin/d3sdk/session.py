@@ -102,7 +102,7 @@ class D3Session(D3SessionBase):
         """
         return self.execute(payload, timeout_sec).returnValue
 
-    def plugin(
+    def execute(
         self, payload: PluginPayload[RetType], timeout_sec: float | None = None
     ) -> PluginResponse[RetType]:
         """Execute a plugin script on Designer.
