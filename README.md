@@ -3,7 +3,7 @@
 A Python library for creating and managing plugins for Disguise Designer. This library provides:
 - DNS-SD service publishing for plugin discovery
 - Remote Python execution on Designer instances
-- Multiple execution patterns (Client SDK, Function SDK)
+- Multiple execution patterns (Client API, Functional API)
 
 ## Installation
 
@@ -66,9 +66,9 @@ If you would prefer not to use the `d3plugin.json` file, construct the `Designer
 
 Python scripts can be executed remotely on Designer via the plugin system.
 
-Direct interaction with the plugin API endpoint requires extensive boilerplate code and JSON parsing. However, the Client SDK and Function SDK simplify this process by providing an RPC (Remote Procedure Call) interface that abstracts away the underlying HTTP communication and payload management.
+Direct interaction with the plugin API endpoint requires extensive boilerplate code and JSON parsing. However, the Client API and Functional API simplify this process by providing an RPC (Remote Procedure Call) interface that abstracts away the underlying HTTP communication and payload management.
 
-> **Important:** The Designer plugin API only supports Python 2.7, not Python 3. Both the Client SDK and Function SDK attempt to automatically convert your Python 3 code to Python 2.7 (f-strings and type hints are supported). However, some Python 3 features may not be fully compatible and conversion may fail in certain cases. 
+> **Important:** The Designer plugin API only supports Python 2.7, not Python 3. Both the Client API and Functional API attempt to automatically convert your Python 3 code to Python 2.7 (f-strings and type hints are supported). However, some Python 3 features may not be fully compatible and conversion may fail in certain cases. 
 
 ## Stub file
 
@@ -87,9 +87,9 @@ if TYPE_CHECKING:
 
 This allows you to get autocomplete for Designer objects like `resourceManager`, `Screen2`, `Path`, etc., while writing your plugin code.
 
-## Client SDK
+## Client API
 
-The Client SDK allows you to define a class with methods that execute remotely on Designer by simply inheriting from `D3PluginClient`. The Client SDK supports both async and sync methods.
+The Client API allows you to define a class with methods that execute remotely on Designer by simply inheriting from `D3PluginClient`. The Client API supports both async and sync methods.
 
 **Example**
 
@@ -148,16 +148,16 @@ import asyncio
 asyncio.run(main())
 ```
 
-## Function SDK
+## Functional API
 
-The Function SDK provides finer control over remote execution compared to the Client SDK. While the Client SDK automatically manages the entire execution lifecycle (registration and execution are transparent), the Function SDK gives you explicit control over:
+The Functional API provides finer control over remote execution compared to the Client API. While the Client API automatically manages the entire execution lifecycle (registration and execution are transparent), the Functional API gives you explicit control over:
 
 - **Payload generation**: Decorators add a `payload()` method to generate execution payloads
 - **Session management**: You manually create sessions and control when to register modules
 - **Function grouping**: Group related functions into modules for efficient reuse
 - **Response handling**: Choose between `session.plugin()` for full response (status, logs, return value) or `session.rpc()` for just the return value
 
-The Function SDK offers two decorators: `@d3pythonscript` and `@d3function`:
+The Functional API offers two decorators: `@d3pythonscript` and `@d3function`:
 - **`@d3pythonscript`**: 
   - Does not require registration.
   - Best for simple scripts executed once or infrequently.
