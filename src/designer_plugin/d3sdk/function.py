@@ -100,9 +100,8 @@ def extract_function_info(func: Callable[..., Any]) -> FunctionInfo:
         body += ast.unparse(stmt) + "\n"
 
     # Extract function arguments
-    args: list[str] = []
-    for arg in first_node.args.args:
-        args.append(arg.arg)
+    sig: inspect.Signature = inspect.signature(func)
+    args: list[str] = list(sig.parameters.keys())
 
     first_node_py27 = convert_function_to_py27(first_node)
     source_code_py27: str = ast.unparse(first_node_py27)
@@ -196,10 +195,10 @@ class D3PythonScript(Generic[P, T]):
         sig: inspect.Signature = inspect.signature(self._function)
         positional, keyword_args = validate_and_extract_args(sig, False, args, kwargs)
 
-        # Create assignment strings for positional arguments
+        # Create assignment strings for positional arguments using parameter names from signature
+        param_names = list(sig.parameters.keys())
         assignments = [
-            f"{self._function_info.args[i]}={repr(arg)}"
-            for i, arg in enumerate(positional)
+            f"{param_names[i]}={repr(arg)}" for i, arg in enumerate(positional)
         ]
 
         kwargs_parts = [f"{name}={repr(value)}" for name, value in keyword_args.items()]

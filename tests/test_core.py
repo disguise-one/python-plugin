@@ -133,6 +133,37 @@ class TestExtractFunctionInfo:
         # But should contain the variable assignment without type hint
         assert "data =" in info.source_code_py27
 
+    def test_extract_info_function_with_varargs(self):
+        """Test that *args and **kwargs are correctly extracted.
+
+        This test detects the issue where using AST (first_node.args.args)
+        only extracts regular positional arguments, missing *args and **kwargs.
+        The fix uses inspect.signature() to capture all parameter names.
+        """
+        def function_with_varargs(a, b, *args, **kwargs):
+            return (a, b, args, kwargs)
+
+        info = extract_function_info(function_with_varargs)
+
+        assert info.name == "function_with_varargs"
+        # All parameters including *args and **kwargs should be captured
+        assert info.args == ["a", "b", "args", "kwargs"]
+
+    def test_extract_info_function_with_keyword_only(self):
+        """Test that keyword-only arguments are correctly extracted.
+
+        This test ensures that keyword-only arguments (after *) are included
+        in the extracted argument list.
+        """
+        def function_with_kwonly(a, b, *, c, d=10):
+            return a + b + c + d
+
+        info = extract_function_info(function_with_kwonly)
+
+        assert info.name == "function_with_kwonly"
+        # All parameters including keyword-only arguments should be captured
+        assert info.args == ["a", "b", "c", "d"]
+
 
 class TestD3Function:
     def test_d3_function_creation(self):
