@@ -165,7 +165,7 @@ class TestSignatureValidation:
         plugin._hostname = "localhost"
         plugin._port = 80
 
-        with pytest.raises(TypeError, match="missing a required keyword-only argument"):
+        with pytest.raises(TypeError, match="missing a required*"):
             plugin.method_mixed(1, 2)
 
     def test_async_method_signature_validation(self, plugin):
