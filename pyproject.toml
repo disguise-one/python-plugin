@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "designer-plugin"
 version = "1.2.0"
-description = "A plugin for the Disguise Designer application."
+description = "Python library for creating Disguise Designer plugins with DNS-SD discovery and remote Python execution"
 authors = [
     { name = "Tom Whittock", email = "tom.whittock@disguise.one" },
     { name = "Taegyun Ha", email = "taegyun.ha@disguise.one" }
