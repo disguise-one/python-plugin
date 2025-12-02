@@ -1,5 +1,10 @@
 # designer-plugin
 
+[![CI](https://github.com/disguise-one/python-plugin/workflows/CI/badge.svg)](https://github.com/disguise-one/python-plugin/actions)
+[![PyPI version](https://badge.fury.io/py/designer-plugin.svg)](https://pypi.org/project/designer-plugin/)
+[![Python Version](https://img.shields.io/pypi/pyversions/designer-plugin.svg)](https://pypi.org/project/designer-plugin/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A Python library for creating and managing plugins for Disguise Designer. This library provides:
 - DNS-SD service publishing for plugin discovery
 - Remote Python execution on Designer instances
