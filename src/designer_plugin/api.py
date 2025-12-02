@@ -190,7 +190,6 @@ async def d3_api_aregister_module(
         PluginException: If module registration fails on Designer side.
     """
     try:
-        # logger.debug(f"Register module: {payload.moduleName}\n{payload.contents}")
         logger.debug(f"Register module:{payload.debug_string()}")
         response: Any = await d3_api_arequest(
             Method.POST,
@@ -201,7 +200,7 @@ async def d3_api_aregister_module(
             timeout=aiohttp.ClientTimeout(timeout_sec) if timeout_sec else None,
         )
     except Exception as e:
-        raise Exception(f"Failed to register module: '{payload.moduleName}'") from e
+        raise Exception(f"Failed to register module: {payload.moduleName}") from e
 
     plugin_response: PluginRegisterResponse = PluginRegisterResponse.model_validate(
         response

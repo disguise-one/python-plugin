@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field
 from designer_plugin.d3sdk.ast_utils import (
     convert_function_to_py27,
     find_packages_in_current_file,
+    validate_and_bind_signature,
+    validate_and_extract_args,
 )
 from designer_plugin.models import (
     PluginPayload,
@@ -187,13 +189,21 @@ class D3PythonScript(Generic[P, T]):
 
         Returns:
             String containing variable assignment statements, one per line.
+
+        Raises:
+            TypeError: If arguments don't match the function signature.
         """
-        args_parts = [
-            f"{param}={repr(arg)}"
-            for param, arg in zip(self._function_info.args, args, strict=False)
+        sig: inspect.Signature = inspect.signature(self._function)
+        positional, keyword_args = validate_and_extract_args(sig, False, args, kwargs)
+
+        # Create assignment strings for positional arguments
+        assignments = [
+            f"{self._function_info.args[i]}={repr(arg)}"
+            for i, arg in enumerate(positional)
         ]
-        kwargs_parts = [f"{name}={repr(value)}" for name, value in kwargs.items()]
-        return "\n".join(args_parts + kwargs_parts)
+
+        kwargs_parts = [f"{name}={repr(value)}" for name, value in keyword_args.items()]
+        return "\n".join(assignments + kwargs_parts)
 
     def payload(self, *args: P.args, **kwargs: P.kwargs) -> PluginPayload[T]:
         """Generate an execution payload for standalone script execution.
@@ -206,6 +216,9 @@ class D3PythonScript(Generic[P, T]):
 
         Returns:
             PluginPayload containing the script with argument assignments and function body.
+
+        Raises:
+            TypeError: If arguments don't match the function signature.
         """
         all_args: str = self._args_to_assign(*args, **kwargs)
         return PluginPayload[T](script=f"{all_args}\n{self._function_info.body_py27}")
@@ -317,7 +330,16 @@ class D3Function(D3PythonScript[P, T]):
 
         Returns:
             Comma-separated string representation of all arguments suitable for function calls.
+
+        Raises:
+            TypeError: If arguments don't match the function signature.
         """
+        # Validate arguments against signature using shared utility
+        sig = inspect.signature(self._function)
+        validate_and_bind_signature(
+            sig, *args, **kwargs
+        )  # This validates and raises TypeError if invalid
+
         # Convert positional args
         args_parts = [repr(arg) for arg in args]
         # Convert keyword args
@@ -337,6 +359,9 @@ class D3Function(D3PythonScript[P, T]):
 
         Returns:
             PluginPayload containing the module name and script that calls the function by name.
+
+        Raises:
+            TypeError: If arguments don't match the function signature.
         """
         return PluginPayload[T](
             moduleName=self._module_name,

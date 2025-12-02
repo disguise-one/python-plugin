@@ -289,6 +289,79 @@ def convert_class_to_py27(class_node: ast.ClassDef) -> None:
 
 
 ###############################################################################
+# Signature validation utilities
+def validate_and_bind_signature(
+    sig: inspect.Signature, *args: Any, **kwargs: Any
+) -> inspect.BoundArguments:
+    """Validate arguments against a function signature and return bound arguments.
+
+    This is a shared utility used by both D3PluginClient and D3PythonScript
+    to ensure consistent argument validation across the codebase.
+
+    Args:
+        sig: The function signature to validate against
+        *args: Positional arguments to validate
+        **kwargs: Keyword arguments to validate
+
+    Returns:
+        BoundArguments object with validated and bound arguments
+
+    Raises:
+        TypeError: If arguments don't match the signature (too many args,
+                  missing required args, unexpected kwargs, etc.)
+    """
+    bound_args = sig.bind(*args, **kwargs)
+    bound_args.apply_defaults()
+    return bound_args
+
+
+def validate_and_extract_args(
+    sig: inspect.Signature,
+    exclude_self: bool,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> tuple[tuple[Any, ...], dict[str, Any]]:
+    """Validate arguments and extract them into positional and keyword arguments.
+
+    This is a shared utility that validates arguments against a signature and
+    separates them into positional and keyword arguments for remote execution.
+
+    Args:
+        sig: The function signature to validate against
+        exclude_self: If True, exclude 'self' parameter from extracted arguments
+        args: Positional arguments to validate
+        kwargs: Keyword arguments to validate
+
+    Returns:
+        Tuple of (positional_args, keyword_args) ready for remote execution
+
+    Raises:
+        TypeError: If arguments don't match the signature
+    """
+    # Validate arguments using shared validation utility
+    bound_args = validate_and_bind_signature(sig, *args, **kwargs)
+
+    # Extract arguments
+    args_dict = dict(bound_args.arguments)
+    if exclude_self:
+        args_dict.pop("self", None)
+
+    # Separate back into positional and keyword arguments
+    positional = []
+    keyword = {}
+    for param_name, param in sig.parameters.items():
+        if exclude_self and param_name == "self":
+            continue
+        if param_name in args_dict:
+            if param.kind in (param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD):
+                positional.append(args_dict[param_name])
+            else:
+                keyword[param_name] = args_dict[param_name]
+
+    return tuple(positional), keyword
+
+
+###############################################################################
 # Python package finder utility
 def find_packages_in_current_file(caller_stack: int = 1) -> list[str]:
     """Find all import statements in the caller's file by inspecting the call stack.

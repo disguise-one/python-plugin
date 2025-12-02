@@ -239,6 +239,47 @@ class TestRegistrationFunctions:
         assert "standalone_function" in function_names
 
 
+class TestD3FunctionSignatureValidation:
+    """Test suite for D3Function signature validation."""
+
+    def test_d3function_payload_too_many_args(self):
+        """Test that D3Function.payload raises TypeError for too many arguments."""
+        @d3function("test_module")
+        def test_func(a: int, b: int) -> int:
+            return a + b
+
+        with pytest.raises(TypeError, match="too many positional arguments"):
+            test_func.payload(1, 2, 3)
+
+    def test_d3function_payload_missing_args(self):
+        """Test that D3Function.payload raises TypeError for missing required arguments."""
+        @d3function("test_module")
+        def test_func(a: int, b: int) -> int:
+            return a + b
+
+        with pytest.raises(TypeError, match="missing a required argument"):
+            test_func.payload(1)
+
+    def test_d3function_payload_multiple_values(self):
+        """Test that D3Function.payload raises TypeError for multiple values for same argument."""
+        @d3function("test_module")
+        def test_func(a: int, b: int) -> int:
+            return a + b
+
+        with pytest.raises(TypeError, match="multiple values for argument"):
+            test_func.payload(1, a=2)
+
+    def test_d3function_payload_correct_args(self):
+        """Test that D3Function.payload works correctly with valid arguments."""
+        @d3function("test_module")
+        def test_func(a: int, b: int) -> int:
+            return a + b
+
+        payload = test_func.payload(5, 10)
+        assert payload.moduleName == "test_module"
+        assert "test_func(5, 10)" in payload.script
+
+
 class TestD3FunctionEquality:
     def test_hash_and_equality(self):
         func1 = D3Function("module1", example_function)
@@ -294,28 +335,45 @@ class TestD3PythonScript:
         assert "return a + b" in payload.script
 
     def test_d3pythonscript_args_to_assign_with_extra_args(self):
-        """Test that _args_to_assign handles extra arguments gracefully.
+        """Test that _args_to_assign validates signature and raises TypeError for extra arguments.
 
-        This test will fail with the enumerate/indexing implementation:
-            args_parts = [f"{self._function_info.args[i]}={repr(arg)}" for i, arg in enumerate(args)]
-
-        But will pass with the zip implementation:
-            args_parts = [f"{param}={repr(arg)}" for param, arg in zip(self._function_info.args, args)]
-
-        The enumerate version causes IndexError when len(args) > len(function parameters).
-        The zip version stops at the shorter sequence length.
+        With signature validation, passing too many arguments should raise TypeError
+        just like calling a regular Python function would.
         """
         @d3pythonscript
         def test_func(a: int, b: int) -> int:
             return a + b
 
         # This function has 2 parameters but we're passing 3 arguments
-        # The first implementation will crash with IndexError
-        # The second implementation will silently ignore the extra argument
-        result = test_func._args_to_assign(1, 2, 3)
+        # Should raise TypeError due to signature validation
+        with pytest.raises(TypeError, match="too many positional arguments"):
+            test_func._args_to_assign(1, 2, 3)
 
-        # Should only contain assignments for the defined parameters
+    def test_d3pythonscript_args_to_assign_correct_args(self):
+        """Test that _args_to_assign works correctly with valid arguments."""
+        @d3pythonscript
+        def test_func(a: int, b: int) -> int:
+            return a + b
+
+        # Test with correct number of arguments
+        result = test_func._args_to_assign(1, 2)
         assert "a=1" in result
         assert "b=2" in result
-        # The extra argument should be silently ignored by the zip implementation
-        assert result.count("=") == 2  # Only 2 assignments
+
+    def test_d3pythonscript_payload_missing_args(self):
+        """Test that payload() raises TypeError for missing required arguments."""
+        @d3pythonscript
+        def test_func(a: int, b: int) -> int:
+            return a + b
+
+        with pytest.raises(TypeError, match="missing a required argument"):
+            test_func.payload(1)
+
+    def test_d3pythonscript_payload_multiple_values(self):
+        """Test that payload() raises TypeError for multiple values for same argument."""
+        @d3pythonscript
+        def test_func(a: int, b: int) -> int:
+            return a + b
+
+        with pytest.raises(TypeError, match="multiple values for argument"):
+            test_func.payload(1, a=2)

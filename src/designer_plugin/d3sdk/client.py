@@ -24,6 +24,7 @@ from designer_plugin.d3sdk.ast_utils import (
     filter_init_args,
     get_class_node,
     get_source,
+    validate_and_extract_args,
 )
 from designer_plugin.models import (
     D3_PLUGIN_DEFAULT_PORT,
@@ -70,11 +71,12 @@ def create_d3_plugin_method_wrapper(
     """Create a wrapper that executes a method remotely via Designer API calls.
 
     This wrapper intercepts method calls and instead of executing locally:
-    1. Serializes the arguments using repr()
-    2. Builds a script string in the form: "return plugin.{method_name}({args})"
-    3. Creates a PluginPayload with the script and module information
-    4. Sends it to Designer via d3_api_plugin or d3_api_aplugin
-    5. Returns the result from the remote execution
+    1. Validates arguments against the original method signature
+    2. Serializes the arguments using repr()
+    3. Builds a script string in the form: "return plugin.{method_name}({args})"
+    4. Creates a PluginPayload with the script and module information
+    5. Sends it to Designer via d3_api_plugin or d3_api_aplugin
+    6. Returns the result from the remote execution
 
     Args:
         method_name: Name of the method to wrap
@@ -82,14 +84,20 @@ def create_d3_plugin_method_wrapper(
 
     Returns:
         An async wrapper if the original method is async, otherwise a sync wrapper.
-        Both wrappers preserve the original method's metadata via functools.wraps.
+        Both wrappers preserve the original method's metadata and signature validation.
     """
+    # Get the signature for argument validation
+    sig = inspect.signature(original_method)
+
     # Determine whether to create async or sync wrapper based on original method
     if inspect.iscoroutinefunction(original_method):
         # Create async wrapper that uses async Designer API call
         @functools.wraps(original_method)
         async def async_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
-            payload = build_payload(self, method_name, args, kwargs)
+            positional, keyword = validate_and_extract_args(
+                sig, True, (self,) + args, kwargs
+            )
+            payload = build_payload(self, method_name, positional, keyword)
             response: PluginResponse[T] = await d3_api_aplugin(
                 self._hostname, self._port, payload
             )
@@ -100,7 +108,10 @@ def create_d3_plugin_method_wrapper(
         # Create sync wrapper that uses synchronous Designer API call
         @functools.wraps(original_method)
         def sync_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
-            payload = build_payload(self, method_name, args, kwargs)
+            positional, keyword = validate_and_extract_args(
+                sig, True, (self,) + args, kwargs
+            )
+            payload = build_payload(self, method_name, positional, keyword)
             response: PluginResponse[T] = d3_api_plugin(
                 self._hostname, self._port, payload
             )
