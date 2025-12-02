@@ -321,7 +321,7 @@ class D3Function(D3PythonScript[P, T]):
         """
         return self._module_name
 
-    def _args_to_string(self, *args: Any, **kwargs: Any) -> str:
+    def _args_to_string(self, *args, **kwargs) -> str:  # type: ignore
         """Convert function arguments to a string representation for function call generation.
 
         Args:

@@ -93,7 +93,7 @@ def create_d3_plugin_method_wrapper(
     if inspect.iscoroutinefunction(original_method):
         # Create async wrapper that uses async Designer API call
         @functools.wraps(original_method)
-        async def async_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        async def async_wrapper(self, *args, **kwargs):  # type: ignore
             positional, keyword = validate_and_extract_args(
                 sig, True, (self,) + args, kwargs
             )
@@ -107,7 +107,7 @@ def create_d3_plugin_method_wrapper(
     else:
         # Create sync wrapper that uses synchronous Designer API call
         @functools.wraps(original_method)
-        def sync_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        def sync_wrapper(self, *args, **kwargs):  # type: ignore
             positional, keyword = validate_and_extract_args(
                 sig, True, (self,) + args, kwargs
             )
@@ -134,7 +134,7 @@ def create_d3_payload_wrapper(
     """
 
     @functools.wraps(original_method)
-    def sync_wrapper(self: Any, *args: Any, **kwargs: Any) -> PluginPayload[T]:
+    def sync_wrapper(self, *args, **kwargs) -> PluginPayload[T]:  # type: ignore
         return build_payload(self, method_name, args, kwargs)
 
     return sync_wrapper
@@ -251,7 +251,7 @@ class D3PluginClientMeta(type):
 
         return super().__new__(cls, name, bases, attrs)
 
-    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
+    def __call__(cls, *args, **kwargs):  # type: ignore
         """Create an instance and generate its remote instantiation code.
 
         This method is called when a class instance is created (e.g., MyPlugin(...)).
@@ -348,13 +348,13 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         return bool(self._hostname) and bool(self._port)
 
     @asynccontextmanager
-    async def async_session(
+    async def async_session(  # type: ignore
         self,
         hostname: str,
         port: int = D3_PLUGIN_DEFAULT_PORT,
         register_module: bool = True,
         module_name: str | None = None,
-    ) -> Any:
+    ):
         """Async context manager for plugin session with Designer.
 
         Args:
@@ -383,13 +383,13 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
             logger.debug("Exiting D3PluginModule context")
 
     @contextmanager
-    def session(
+    def session(  # type: ignore
         self,
         hostname: str,
         port: int = D3_PLUGIN_DEFAULT_PORT,
         register_module: bool = True,
         module_name: str | None = None,
-    ) -> Any:
+    ):
         """Sync context manager for plugin session with Designer.
 
         Args:
