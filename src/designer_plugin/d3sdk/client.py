@@ -338,6 +338,7 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
     def __init__(self) -> None:
         self._hostname: str | None = None
         self._port: int | None = None
+        self._override_module_name: str | None = None
 
     def in_session(self) -> bool:
         """Check if the client is currently in an active session.
@@ -369,7 +370,7 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         """
         try:
             if module_name:
-                self.module_name = module_name
+                self._override_module_name = module_name
 
             self._hostname = hostname
             self._port = port
@@ -380,6 +381,7 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         finally:
             self._hostname = None
             self._port = None
+            self._override_module_name = None
             logger.debug("Exiting D3PluginModule context")
 
     @contextmanager
@@ -404,7 +406,7 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         """
         try:
             if module_name:
-                self.module_name = module_name
+                self._override_module_name = module_name
 
             self._hostname = hostname
             self._port = port
@@ -415,6 +417,7 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         finally:
             self._hostname = None
             self._port = None
+            self._override_module_name = None
             logger.debug("Exiting D3PluginModule context")
 
     async def _aregister(self, hostname: str, port: int) -> None:
@@ -451,7 +454,8 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         Returns:
             RegisterPayload containing moduleName and contents for registration.
         """
+        module_name: str = self._override_module_name or self.module_name
         return RegisterPayload(
-            moduleName=self.module_name,
+            moduleName=module_name,
             contents=self._get_register_module_content(),
         )

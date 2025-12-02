@@ -251,3 +251,62 @@ class TestValidateAndExtractArgs:
 
         with pytest.raises(TypeError):
             validate_and_extract_args(sig, True, (None, 1, 2, 3), {})
+
+
+class TestModuleNameOverride:
+    """Test suite for module_name override functionality."""
+
+    @pytest.fixture
+    def plugin(self):
+        """Create a test plugin instance."""
+        return SignatureValidationPlugin("test_config")
+
+    def test_override_module_name_in_session(self, plugin):
+        """Test that module_name parameter overrides the default in session."""
+        with patch('designer_plugin.d3sdk.client.d3_api_register_module') as mock_register:
+            # Get the original module_name
+            original_module_name = plugin.module_name
+
+            # Use session with a custom module name
+            with plugin.session("localhost", 80, register_module=True, module_name="CustomModule"):
+                # Verify the register was called with the overridden name
+                mock_register.assert_called_once()
+                call_args = mock_register.call_args
+                payload = call_args[0][2]  # Third positional argument is the payload
+                assert payload.moduleName == "CustomModule"
+                assert payload.moduleName != original_module_name
+
+            # After session ends, verify the override is cleared
+            assert plugin._override_module_name is None
+            # Verify the class module_name is unchanged
+            assert plugin.module_name == original_module_name
+
+    def test_no_override_uses_default_module_name(self, plugin):
+        """Test that without module_name parameter, default module_name is used."""
+        with patch('designer_plugin.d3sdk.client.d3_api_register_module') as mock_register:
+            original_module_name = plugin.module_name
+
+            # Use session without custom module name
+            with plugin.session("localhost", 80, register_module=True):
+                mock_register.assert_called_once()
+                call_args = mock_register.call_args
+                payload = call_args[0][2]
+                assert payload.moduleName == original_module_name
+
+            # Verify no override was set
+            assert plugin._override_module_name is None
+
+    def test_override_cleared_on_exception(self, plugin):
+        """Test that module_name override is cleared even if an exception occurs."""
+        with patch('designer_plugin.d3sdk.client.d3_api_register_module', side_effect=Exception("Test error")):
+            original_module_name = plugin.module_name
+
+            # Use session with custom module name, expect exception
+            with pytest.raises(Exception, match="Test error"):
+                with plugin.session("localhost", 80, register_module=True, module_name="CustomModule"):
+                    pass
+
+            # Verify the override is cleared despite the exception
+            assert plugin._override_module_name is None
+            # Verify the class module_name is unchanged
+            assert plugin.module_name == original_module_name
