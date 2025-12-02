@@ -65,6 +65,16 @@ def build_payload(
     return PluginPayload[Any](moduleName=self.module_name, script=script)
 
 
+def session_runtime_error_message(class_name: str) -> str:
+    return f"""\
+{class_name} is not in an active session.
+
+Usage:
+    with plugin.session('localhost', 80):
+        plugin.your_method()
+"""
+
+
 def create_d3_plugin_method_wrapper(
     method_name: str, original_method: Callable[P, T]
 ) -> Callable[..., Any]:
@@ -97,6 +107,10 @@ def create_d3_plugin_method_wrapper(
             positional, keyword = validate_and_extract_args(
                 sig, True, (self,) + args, kwargs
             )
+            if not self.in_session():
+                raise RuntimeError(
+                    session_runtime_error_message(self.__class__.__name__)
+                )
             payload = build_payload(self, method_name, positional, keyword)
             response: PluginResponse[T] = await d3_api_aplugin(
                 self._hostname, self._port, payload
@@ -111,6 +125,10 @@ def create_d3_plugin_method_wrapper(
             positional, keyword = validate_and_extract_args(
                 sig, True, (self,) + args, kwargs
             )
+            if not self.in_session():
+                raise RuntimeError(
+                    session_runtime_error_message(self.__class__.__name__)
+                )
             payload = build_payload(self, method_name, positional, keyword)
             response: PluginResponse[T] = d3_api_plugin(
                 self._hostname, self._port, payload
@@ -454,7 +472,7 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         Returns:
             RegisterPayload containing moduleName and contents for registration.
         """
-        module_name: str = self._override_module_name or self.module_name
+        module_name: str = self._override_module_name or self.module_name  # type: ignore[attr-defined]
         return RegisterPayload(
             moduleName=module_name,
             contents=self._get_register_module_content(),

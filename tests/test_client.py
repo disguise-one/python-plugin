@@ -60,6 +60,15 @@ class TestSignatureValidation:
             returnValue=42
         )
 
+    def test_method_call_without_session_raises_error(self, plugin):
+        """Test that calling a method outside of a session raises RuntimeError."""
+        # Verify plugin is not in session
+        assert not plugin.in_session()
+
+        # Attempt to call a method without being in a session
+        with pytest.raises(RuntimeError, match="is not in.*session"):
+            plugin.simple_method(1, 2)
+
     def test_correct_arguments_sync(self, plugin, mock_response):
         """Test that correct arguments pass through successfully."""
         with patch('designer_plugin.d3sdk.client.d3_api_plugin', return_value=mock_response) as mock_api:
