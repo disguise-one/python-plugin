@@ -628,3 +628,268 @@ class TestBuildPayload:
         for method_name in method_names:
             payload = build_payload(plugin, method_name, (), {})
             assert f"plugin.{method_name}()" in payload.script
+
+
+class TestInstanceCodeGenerationWithDefaults:
+    """Test suite for instance_code generation with default parameters in __init__.
+
+    This addresses the issue where D3PluginClientMeta.__call__ fails when __init__
+    uses defaults or omitted filtered args, causing KeyError during .format().
+
+    The current implementation uses:
+        instance_code_template = "plugin = ClassName({arg1},{arg2})"
+        instance_code = instance_code_template.format(**arg_mapping)
+
+    This raises KeyError when arg_mapping doesn't contain all placeholders.
+
+    The fix should build the argument string directly from provided args/kwargs:
+        arg_strings = [repr(arg) for arg in provided_args]
+        instance_code = f"plugin = ClassName({', '.join(arg_strings)})"
+    """
+
+    def test_plugin_with_no_defaults_all_args_provided(self):
+        """Test plugin with no defaults when all arguments are provided."""
+        class NoDefaultsPlugin(D3PluginClient):
+            def __init__(self, a: int, b: int):
+                super().__init__()
+                self.a = a
+                self.b = b
+
+            def test_method(self) -> int:
+                return self.a + self.b
+
+        # Create instance with all args - should work
+        plugin = NoDefaultsPlugin(1, 2)
+
+        # Verify instance_code is generated correctly
+        assert hasattr(plugin, 'instance_code')
+        assert 'NoDefaultsPlugin' in plugin.instance_code
+        assert '1' in plugin.instance_code
+        assert '2' in plugin.instance_code
+
+    def test_plugin_with_defaults_all_args_provided(self):
+        """Test plugin with defaults when all arguments are explicitly provided."""
+        class DefaultsPlugin(D3PluginClient):
+            def __init__(self, a: int, b: int = 10, c: int = 20):
+                super().__init__()
+                self.a = a
+                self.b = b
+                self.c = c
+
+            def test_method(self) -> int:
+                return self.a + self.b + self.c
+
+        # Create instance with all args - should work
+        plugin = DefaultsPlugin(1, 2, 3)
+
+        # Verify instance_code is generated correctly with all args
+        assert hasattr(plugin, 'instance_code')
+        assert 'DefaultsPlugin' in plugin.instance_code
+        # Should contain all provided values
+        assert '1' in plugin.instance_code
+        assert '2' in plugin.instance_code
+        assert '3' in plugin.instance_code
+
+    def test_plugin_with_defaults_omitting_optional_args(self):
+        """Test plugin with defaults when optional arguments are omitted.
+
+        This is the main issue: when a parameter with a default is omitted,
+        the current implementation raises KeyError during format().
+        """
+        class DefaultsPlugin(D3PluginClient):
+            def __init__(self, a: int, b: int = 10):
+                super().__init__()
+                self.a = a
+                self.b = b
+
+            def test_method(self) -> int:
+                return self.a + self.b
+
+        # Create instance with only required arg - should work with the fix
+        plugin = DefaultsPlugin(5)
+
+        # Verify instance_code is generated correctly
+        assert hasattr(plugin, 'instance_code')
+        assert 'DefaultsPlugin' in plugin.instance_code
+        # Should only contain the provided argument
+        assert '5' in plugin.instance_code
+        # The instance_code should be valid Python that relies on the default
+        # With the fix, it should be something like: plugin = DefaultsPlugin(5)
+        # NOT: plugin = DefaultsPlugin({a}) which would fail .format()
+
+    def test_plugin_with_multiple_defaults_partial_override(self):
+        """Test plugin with multiple defaults, overriding only some."""
+        class MultiDefaultsPlugin(D3PluginClient):
+            def __init__(self, a: int, b: int = 10, c: int = 20, d: int = 30):
+                super().__init__()
+                self.a = a
+                self.b = b
+                self.c = c
+                self.d = d
+
+            def test_method(self) -> int:
+                return self.a + self.b + self.c + self.d
+
+        # Create instance with required + some optional args
+        plugin = MultiDefaultsPlugin(1, 15)
+
+        # Verify instance_code is generated correctly
+        assert hasattr(plugin, 'instance_code')
+        assert 'MultiDefaultsPlugin' in plugin.instance_code
+        assert '1' in plugin.instance_code
+        assert '15' in plugin.instance_code
+        # c and d should rely on defaults and not appear in instance_code
+
+    def test_plugin_with_defaults_using_keyword_args(self):
+        """Test plugin with defaults using keyword arguments."""
+        class DefaultsPlugin(D3PluginClient):
+            def __init__(self, a: int, b: int = 10, c: int = 20):
+                super().__init__()
+                self.a = a
+                self.b = b
+                self.c = c
+
+            def test_method(self) -> int:
+                return self.a + self.b + self.c
+
+        # Create instance with keyword args, skipping middle default
+        plugin = DefaultsPlugin(1, c=30)
+
+        # Verify instance_code is generated correctly
+        assert hasattr(plugin, 'instance_code')
+        assert 'DefaultsPlugin' in plugin.instance_code
+        assert '1' in plugin.instance_code
+        # Should include c as keyword arg
+        assert 'c=30' in plugin.instance_code or '30' in plugin.instance_code
+
+    def test_plugin_with_all_defaults_using_positional(self):
+        """Test plugin where all parameters have defaults, using positional args."""
+        class AllDefaultsPlugin(D3PluginClient):
+            def __init__(self, a: int = 1, b: int = 2, c: int = 3):
+                super().__init__()
+                self.a = a
+                self.b = b
+                self.c = c
+
+            def test_method(self) -> int:
+                return self.a + self.b + self.c
+
+        # Create instance with no args - all defaults
+        plugin = AllDefaultsPlugin()
+
+        # Verify instance_code is generated correctly (should be empty args)
+        assert hasattr(plugin, 'instance_code')
+        assert 'AllDefaultsPlugin()' in plugin.instance_code
+
+    def test_plugin_with_all_defaults_partial_override(self):
+        """Test plugin where all parameters have defaults, overriding some."""
+        class AllDefaultsPlugin(D3PluginClient):
+            def __init__(self, a: int = 1, b: int = 2, c: int = 3):
+                super().__init__()
+                self.a = a
+                self.b = b
+                self.c = c
+
+            def test_method(self) -> int:
+                return self.a + self.b + self.c
+
+        # Create instance with one arg
+        plugin = AllDefaultsPlugin(10)
+
+        # Verify instance_code is generated correctly
+        assert hasattr(plugin, 'instance_code')
+        assert 'AllDefaultsPlugin' in plugin.instance_code
+        assert '10' in plugin.instance_code
+
+    def test_plugin_defaults_with_different_types(self):
+        """Test plugin with defaults of different types."""
+        class TypedDefaultsPlugin(D3PluginClient):
+            def __init__(self, name: str, count: int = 5, active: bool = True):
+                super().__init__()
+                self.name = name
+                self.count = count
+                self.active = active
+
+            def test_method(self) -> str:
+                return f"{self.name}: {self.count}"
+
+        # Create instance with only required arg
+        plugin = TypedDefaultsPlugin("test")
+
+        # Verify instance_code is generated correctly
+        assert hasattr(plugin, 'instance_code')
+        assert 'TypedDefaultsPlugin' in plugin.instance_code
+        assert "'test'" in plugin.instance_code
+
+    def test_instance_code_execution_semantics(self):
+        """Test that generated instance_code has correct execution semantics.
+
+        The generated code should let the remote side apply defaults,
+        not try to substitute them client-side.
+        """
+        class SemanticsPlugin(D3PluginClient):
+            def __init__(self, x: int, y: int = 100):
+                super().__init__()
+                self.x = x
+                self.y = y
+
+            def test_method(self) -> int:
+                return self.x + self.y
+
+        # Test case 1: Only required arg
+        plugin1 = SemanticsPlugin(5)
+        # The instance_code should be: plugin = SemanticsPlugin(5)
+        # NOT: plugin = SemanticsPlugin(5, 100) - that would hardcode the default
+        assert 'SemanticsPlugin(5)' in plugin1.instance_code
+        assert '100' not in plugin1.instance_code  # Default should not appear
+
+        # Test case 2: Override the default
+        plugin2 = SemanticsPlugin(5, 200)
+        # The instance_code should include the override
+        assert 'SemanticsPlugin' in plugin2.instance_code
+        assert '5' in plugin2.instance_code
+        assert '200' in plugin2.instance_code
+
+    def test_complex_defaults_scenario(self):
+        """Test complex scenario with mixed required and optional args."""
+        class ComplexPlugin(D3PluginClient):
+            def __init__(
+                self,
+                required1: str,
+                required2: int,
+                optional1: str = "default1",
+                optional2: int = 42,
+                optional3: bool = False
+            ):
+                super().__init__()
+                self.required1 = required1
+                self.required2 = required2
+                self.optional1 = optional1
+                self.optional2 = optional2
+                self.optional3 = optional3
+
+            def test_method(self) -> str:
+                return f"{self.required1}_{self.required2}"
+
+        # Test various combinations
+
+        # All required only
+        plugin1 = ComplexPlugin("test", 10)
+        assert 'ComplexPlugin' in plugin1.instance_code
+        assert "'test'" in plugin1.instance_code
+        assert '10' in plugin1.instance_code
+
+        # Required + some optional (positional)
+        plugin2 = ComplexPlugin("test", 10, "custom")
+        assert 'ComplexPlugin' in plugin2.instance_code
+        assert "'test'" in plugin2.instance_code
+        assert '10' in plugin2.instance_code
+        assert "'custom'" in plugin2.instance_code
+
+        # Required + some optional (keyword)
+        plugin3 = ComplexPlugin("test", 10, optional2=99)
+        assert 'ComplexPlugin' in plugin3.instance_code
+        assert "'test'" in plugin3.instance_code
+        assert '10' in plugin3.instance_code
+        # Should include the keyword argument
+        assert '99' in plugin3.instance_code

@@ -188,7 +188,6 @@ class D3PluginClientMeta(type):
         source_code: Python 3 source code with filtered variables
         source_code_py27: Python 2.7 compatible source code
         module_name: Name used to register the module with Designer
-        instance_code_template: Template string for instantiating the plugin remotely
         instance_code: Actual instantiation code with concrete argument values
     """
 
@@ -197,7 +196,6 @@ class D3PluginClientMeta(type):
     source_code: str
     source_code_py27: str
     module_name: str
-    instance_code_template: str
     instance_code: str
 
     def __new__(cls, name: str, bases: tuple[type, ...], attrs: dict[str, Any]) -> type:
@@ -243,16 +241,9 @@ class D3PluginClientMeta(type):
 
         # Filter out client-side-only __init__ arguments and get remaining params
         filtered_init_args: list[str] = filter_init_args(class_node)
-        formated_filtered_init_args: list[str] = [
-            f"{{{arg}}}" for arg in filtered_init_args
-        ]
 
         # Unparse modified AST back to Python 3 source code (clean, no comments)
         attrs["source_code"] = f"{ast.unparse(class_node)}"
-        # Create template for instantiating the plugin remotely with placeholders
-        attrs["instance_code_template"] = (
-            f"plugin = {name}({','.join(formated_filtered_init_args)})"
-        )
         attrs["filtered_init_args"] = filtered_init_args
 
         # Convert async methods to Python 2.7 compatible sync methods
@@ -273,8 +264,7 @@ class D3PluginClientMeta(type):
         """Create an instance and generate its remote instantiation code.
 
         This method is called when a class instance is created (e.g., MyPlugin(...)).
-        It maps the provided arguments to the filtered parameter names and generates
-        the instance_code that will be used to instantiate the plugin remotely.
+        It builds an argument string for remote instantiation, respecting defaults.
 
         Args:
             *args: Positional arguments for the plugin __init__
@@ -283,23 +273,22 @@ class D3PluginClientMeta(type):
         Returns:
             An instance of the plugin class with instance_code attribute set
         """
-        # Build mapping from parameter names to their repr() values for remote instantiation
+        # Build argument string for remote instantiation, respecting defaults.
         param_names: list[str] = cls.filtered_init_args
-        arg_mapping: dict[str, str] = {}
+        arg_strings: list[str] = []
 
-        # Map positional arguments
         for i, param_name in enumerate(param_names):
-            filtered_idx = i  # Account for excluded client-side args
-            if filtered_idx < len(args):
-                arg_mapping[param_name] = repr(args[filtered_idx])
+            if i < len(args):
+                # Positional argument provided
+                arg_strings.append(repr(args[i]))
+            elif param_name in kwargs:
+                # Keyword argument provided
+                arg_strings.append(f"{param_name}={repr(kwargs[param_name])}")
+            else:
+                # Argument not provided -> rely on __init__ default on the remote side
+                continue
 
-        # Map keyword arguments that match filtered parameter names
-        for key, value in kwargs.items():
-            if key in param_names:
-                arg_mapping[key] = repr(value)
-
-        # Replace placeholders in template with actual serialized argument values
-        instance_code: str = cls.instance_code_template.format(**arg_mapping)
+        instance_code: str = f"plugin = {cls.__name__}({', '.join(arg_strings)})"
 
         # Create the actual client instance with all original arguments
         instance = super().__call__(*args, **kwargs)
@@ -471,7 +460,9 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         Returns:
             The module name to use for registration and API calls.
         """
-        return self._override_module_name or self.module_name  # type: ignore[attr-defined]
+        if hasattr(self, "_override_module_name") and self._override_module_name:
+            return self._override_module_name
+        return self.module_name  # type: ignore
 
     def _get_register_module_content(self) -> str:
         """Generate the complete module content to register with Designer.
