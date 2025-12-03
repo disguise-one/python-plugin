@@ -259,7 +259,7 @@ class D3PluginClientMeta(type):
         convert_class_to_py27(class_node)
         attrs["source_code_py27"] = f"{ast.unparse(class_node)}"
 
-        # Wrap all user-defined public methods to execute remotely via D3 API
+        # Wrap all user-defined public methods to execute remotely via Designer API
         # Skip internal framework methods
         for attr_name, attr_value in attrs.items():
             if callable(attr_value) and not attr_name.startswith("__"):

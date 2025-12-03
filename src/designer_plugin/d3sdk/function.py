@@ -130,7 +130,7 @@ class D3PythonScript(Generic[P, T]):
         """Initialise a D3PythonScript wrapper around a Python function.
 
         Args:
-            func: The Python function to wrap for D3 execution.
+            func: The Python function to wrap for execution within Designer.
         """
         self._function: Callable[P, T] = func
         self._function_info: FunctionInfo = extract_function_info(func)
@@ -246,7 +246,7 @@ class D3Function(D3PythonScript[P, T]):
 
         Args:
             module_name: Name of the module to register this function under.
-            func: The Python function to wrap for D3 execution.
+            func: The Python function to wrap for execution in Designer.
         """
         # Add this function into available_d3_functions
         self._module_name: str = module_name
@@ -371,10 +371,10 @@ class D3Function(D3PythonScript[P, T]):
 ###############################################################################
 # d3function API
 def d3pythonscript(func: Callable[P, T]) -> D3PythonScript[P, T]:
-    """Decorator to wrap a Python function for standalone D3 Designer script execution.
+    """Decorator to wrap a Python function for standalone Designer script execution.
 
     This decorator transforms a regular Python function into a D3PythonScript that generates
-    execution payloads for direct script execution in D3 Designer. Unlike @d3function, this
+    execution payloads for direct script execution in Designer. Unlike @d3function, this
     decorator does not register the function as a module and is intended for one-off script
     execution where the function body is inlined with the arguments.
 
@@ -405,10 +405,10 @@ def d3pythonscript(func: Callable[P, T]) -> D3PythonScript[P, T]:
 
 # Actual implementation
 def d3function(module_name: str = "") -> Callable[[Callable[P, T]], D3Function[P, T]]:
-    """Decorator to wrap a Python function for D3 Designer module registration and execution.
+    """Decorator to wrap a Python function for Designer module registration and execution.
 
     This decorator transforms a regular Python function into a D3Function that can be registered
-    as a reusable module in D3 Designer and executed remotely. The decorated function is added to
+    as a reusable module in Designer and executed remotely. The decorated function is added to
     the module's function registry and can be called by name after module registration.
 
     Unlike @d3pythonscript which inlines the function body, @d3function registers the complete
@@ -448,15 +448,15 @@ def d3function(module_name: str = "") -> Callable[[Callable[P, T]], D3Function[P
 
 
 def add_packages_in_current_file(module_name: str) -> None:
-    """Add all import statements from the caller's file to a D3 module's package list.
+    """Add all import statements from the caller's file to a d3function module's package list.
 
     This function scans the calling file's import statements and registers them with
     the specified module name, making those imports available when the module is
     registered with Designer. This is useful for ensuring all dependencies are included
-    when deploying Python functions to D3 Designer.
+    when deploying Python functions to Designer.
 
     Args:
-        module_name: The name of the D3 module to associate the packages with.
+        module_name: The name of the d3function module to associate the packages with.
                     Must match the module_name used in @d3function decorator.
 
     Example:
@@ -483,7 +483,7 @@ def get_register_payload(module_name: str) -> RegisterPayload | None:
         module_name: The name of the module to get the payload for.
 
     Returns:
-        RegisterPayload for the module, or None if the module has no registered functions.
+        RegisterPayload for the module, or None if the module has no registered d3function.
     """
     return D3Function.get_module_register_payload(module_name)
 
@@ -492,7 +492,7 @@ def get_all_d3functions() -> list[tuple[str, str]]:
     """Retrieve all available d3function as module_name-function_name pairs.
 
     Returns:
-        List of tuples containing (module_name, function_name) for all registered D3 functions.
+        List of tuples containing (module_name, function_name) for all registered d3function.
     """
     module_function_pairs: list[tuple[str, str]] = []
     for module_name, funcs in D3Function._available_d3functions.items():
@@ -506,6 +506,6 @@ def get_all_modules() -> list[str]:
     """Retrieve names of all modules registered with @d3function decorator.
 
     Returns:
-        List of module names that have registered D3 functions.
+        List of module names that have registered d3function.
     """
     return list(D3Function._available_d3functions.keys())

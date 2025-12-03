@@ -50,7 +50,7 @@ def filter_base_classes(class_node: ast.ClassDef) -> None:
     """Remove all base classes from a class definition for Python 2.7 compatibility.
 
     This function modifies the class_node in-place by clearing its base class list.
-    Inheritance is not supported in the current D3 Designer plugin system.
+    Inheritance is not supported in the current Designer plugin system.
 
     Args:
         class_node: The class definition node to process
@@ -368,7 +368,7 @@ def find_packages_in_current_file(caller_stack: int = 1) -> list[str]:
 
     This function walks up the call stack to find the module where it was called from,
     then parses that module's source code to extract all import statements that are
-    compatible with Python 2.7 and safe to send to D3 Designer.
+    compatible with Python 2.7 and safe to send to Designer.
 
     Args:
         caller_stack: Number of frames to go up the call stack. Default is 1 (immediate caller).
