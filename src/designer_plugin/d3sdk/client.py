@@ -394,13 +394,15 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
             self._port = port
             if register_module:
                 await self._aregister(hostname, port)
-            logger.debug("Entering D3PluginModule context")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("Entering D3PluginModule context")
             yield self
         finally:
             self._hostname = None
             self._port = None
             self._override_module_name = None
-            logger.debug("Exiting D3PluginModule context")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("Exiting D3PluginModule context")
 
     @contextmanager
     def session(  # type: ignore
@@ -430,13 +432,15 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
             self._port = port
             if register_module:
                 self._register(hostname, port)
-            logger.debug("Entering D3PluginModule context")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("Entering D3PluginModule context")
             yield self
         finally:
             self._hostname = None
             self._port = None
             self._override_module_name = None
-            logger.debug("Exiting D3PluginModule context")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("Exiting D3PluginModule context")
 
     async def _aregister(self, hostname: str, port: int) -> None:
         """Register the plugin module with Designer asynchronously.

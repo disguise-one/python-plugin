@@ -145,7 +145,8 @@ async def d3_api_aplugin(
     Raises:
         PluginException: If the plugin execution fails.
     """
-    logger.debug(f"Send plugin api:{payload.debug_string()}")
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(f"Send plugin api:{payload.debug_string()}")
     response: Any = await d3_api_arequest(
         Method.POST,
         hostname,
@@ -159,7 +160,8 @@ async def d3_api_aplugin(
 
         if plugin_response.pythonLog:
             print(plugin_response.pythonLog)
-        logger.debug(f"PluginResponse:{plugin_response.debug_string()}")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"PluginResponse:{plugin_response.debug_string()}")
 
         return plugin_response
     except ValidationError:
@@ -190,7 +192,8 @@ async def d3_api_aregister_module(
         PluginException: If module registration fails on Designer side.
     """
     try:
-        logger.debug(f"Register module:{payload.debug_string()}")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"Register module:{payload.debug_string()}")
         response: Any = await d3_api_arequest(
             Method.POST,
             hostname,
@@ -237,7 +240,8 @@ def d3_api_plugin(
         PluginException: If the plugin execution fails.
     """
 
-    logger.debug(f"Send plugin api:{payload.debug_string()}")
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(f"Send plugin api:{payload.debug_string()}")
     response = d3_api_request(
         Method.POST,
         hostname,
@@ -252,7 +256,8 @@ def d3_api_plugin(
 
         if plugin_response.pythonLog:
             print(plugin_response.pythonLog)
-        logger.debug(f"PluginResponse:{plugin_response.debug_string()}")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"PluginResponse:{plugin_response.debug_string()}")
 
         return plugin_response
     except ValidationError:
@@ -286,7 +291,8 @@ def d3_api_register_module(
         PluginException: If module registration fails on Designer side.
     """
     try:
-        logger.debug(f"Register module:{payload.debug_string()}")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"Register module:{payload.debug_string()}")
         response: Any = d3_api_request(
             Method.POST,
             hostname,
