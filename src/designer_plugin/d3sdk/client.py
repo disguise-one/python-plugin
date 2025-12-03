@@ -62,7 +62,7 @@ def build_payload(
     script = f"return plugin.{method_name}({all_args})"
 
     # Create payload containing script and module info
-    return PluginPayload[Any](moduleName=self.module_name, script=script)
+    return PluginPayload[Any](moduleName=self._get_module_name(), script=script)
 
 
 def session_runtime_error_message(class_name: str) -> str:
@@ -458,6 +458,17 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         """
         d3_api_register_module(hostname, port, self._get_register_module_payload())
 
+    def _get_module_name(self) -> str:
+        """Get the effective module name, considering session overrides.
+
+        Returns the override module name if set during a session context,
+        otherwise returns the class's default module_name property.
+
+        Returns:
+            The module name to use for registration and API calls.
+        """
+        return self._override_module_name or self.module_name  # type: ignore[attr-defined]
+
     def _get_register_module_content(self) -> str:
         """Generate the complete module content to register with Designer.
 
@@ -472,8 +483,7 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         Returns:
             RegisterPayload containing moduleName and contents for registration.
         """
-        module_name: str = self._override_module_name or self.module_name  # type: ignore[attr-defined]
         return RegisterPayload(
-            moduleName=module_name,
+            moduleName=self._get_module_name(),
             contents=self._get_register_module_content(),
         )

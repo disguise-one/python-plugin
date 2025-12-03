@@ -457,3 +457,174 @@ class TestModuleNameOverride:
             assert plugin._override_module_name is None
             # Verify the class module_name is unchanged
             assert plugin.module_name == original_module_name
+
+    def test_get_module_name_returns_default_when_no_override(self, plugin):
+        """Test that _get_module_name returns default module_name when no override is set."""
+        # Ensure no override is set
+        assert plugin._override_module_name is None
+
+        # Get the original module_name
+        original_module_name = plugin.module_name
+
+        # _get_module_name should return the default
+        assert plugin._get_module_name() == original_module_name
+
+    def test_get_module_name_returns_override_when_set(self, plugin):
+        """Test that _get_module_name returns override when set."""
+        original_module_name = plugin.module_name
+        override_name = "OverriddenModule"
+
+        # Set an override
+        plugin._override_module_name = override_name
+
+        # _get_module_name should return the override
+        assert plugin._get_module_name() == override_name
+        assert plugin._get_module_name() != original_module_name
+
+        # Clean up
+        plugin._override_module_name = None
+
+    def test_get_module_name_during_session_with_override(self, plugin):
+        """Test that _get_module_name returns override during session context."""
+        with patch('designer_plugin.d3sdk.client.d3_api_register_module'):
+            original_module_name = plugin.module_name
+            override_name = "SessionModule"
+
+            with plugin.session("localhost", 80, register_module=True, module_name=override_name):
+                # During session, _get_module_name should return the override
+                assert plugin._get_module_name() == override_name
+                assert plugin._get_module_name() != original_module_name
+
+            # After session, should return to default
+            assert plugin._get_module_name() == original_module_name
+
+    def test_get_module_name_during_session_without_override(self, plugin):
+        """Test that _get_module_name returns default during session without override."""
+        with patch('designer_plugin.d3sdk.client.d3_api_register_module'):
+            original_module_name = plugin.module_name
+
+            with plugin.session("localhost", 80, register_module=True):
+                # Without override, should return default module_name
+                assert plugin._get_module_name() == original_module_name
+
+            # After session, should still return default
+            assert plugin._get_module_name() == original_module_name
+
+
+class TestBuildPayload:
+    """Test suite for build_payload function."""
+
+    @pytest.fixture
+    def plugin(self):
+        """Create a test plugin instance."""
+        return SignatureValidationPlugin("test_config")
+
+    def test_build_payload_with_no_arguments(self, plugin):
+        """Test build_payload with method that takes no arguments."""
+        from designer_plugin.d3sdk.client import build_payload
+
+        payload = build_payload(plugin, "simple_method", (), {})
+
+        assert payload.moduleName == plugin.module_name
+        assert payload.script == "return plugin.simple_method()"
+
+    def test_build_payload_with_positional_arguments(self, plugin):
+        """Test build_payload with positional arguments."""
+        from designer_plugin.d3sdk.client import build_payload
+
+        payload = build_payload(plugin, "simple_method", (1, 2), {})
+
+        assert payload.moduleName == plugin.module_name
+        assert payload.script == "return plugin.simple_method(1, 2)"
+
+    def test_build_payload_with_keyword_arguments(self, plugin):
+        """Test build_payload with keyword arguments."""
+        from designer_plugin.d3sdk.client import build_payload
+
+        payload = build_payload(plugin, "method_keyword_only", (), {"name": "test", "value": 100})
+
+        assert payload.moduleName == plugin.module_name
+        assert payload.script == "return plugin.method_keyword_only(name='test', value=100)"
+
+    def test_build_payload_with_mixed_arguments(self, plugin):
+        """Test build_payload with both positional and keyword arguments."""
+        from designer_plugin.d3sdk.client import build_payload
+
+        payload = build_payload(plugin, "method_mixed", (1, 2), {"c": "test"})
+
+        assert payload.moduleName == plugin.module_name
+        assert payload.script == "return plugin.method_mixed(1, 2, c='test')"
+
+    def test_build_payload_with_string_arguments(self, plugin):
+        """Test build_payload correctly escapes string arguments."""
+        from designer_plugin.d3sdk.client import build_payload
+
+        payload = build_payload(plugin, "some_method", ("hello world",), {"key": "value with spaces"})
+
+        assert payload.moduleName == plugin.module_name
+        # repr() should properly quote strings
+        assert "plugin.some_method('hello world', key='value with spaces')" in payload.script
+
+    def test_build_payload_with_various_types(self, plugin):
+        """Test build_payload handles various argument types."""
+        from designer_plugin.d3sdk.client import build_payload
+
+        payload = build_payload(plugin, "some_method", (42, 3.14, True, None, [1, 2, 3]), {})
+
+        assert payload.moduleName == plugin.module_name
+        assert payload.script == "return plugin.some_method(42, 3.14, True, None, [1, 2, 3])"
+
+    def test_build_payload_uses_override_module_name(self, plugin):
+        """Test that build_payload uses override module name when set."""
+        from designer_plugin.d3sdk.client import build_payload
+
+        original_module_name = plugin.module_name
+        override_name = "OverriddenModule"
+
+        # Set an override
+        plugin._override_module_name = override_name
+
+        payload = build_payload(plugin, "simple_method", (), {})
+
+        # Should use the override, not the default
+        assert payload.moduleName == override_name
+        assert payload.moduleName != original_module_name
+
+        # Clean up
+        plugin._override_module_name = None
+
+    def test_build_payload_during_session_with_override(self, plugin):
+        """Test build_payload uses override module name during session."""
+        from designer_plugin.d3sdk.client import build_payload
+
+        with patch('designer_plugin.d3sdk.client.d3_api_register_module'):
+            override_name = "SessionModule"
+
+            with plugin.session("localhost", 80, register_module=True, module_name=override_name):
+                payload = build_payload(plugin, "simple_method", (1, 2), {})
+
+                # Should use the session override
+                assert payload.moduleName == override_name
+                assert payload.script == "return plugin.simple_method(1, 2)"
+
+    def test_build_payload_with_complex_nested_structures(self, plugin):
+        """Test build_payload handles nested data structures."""
+        from designer_plugin.d3sdk.client import build_payload
+
+        nested_data = {"key": [1, 2, {"inner": "value"}]}
+        payload = build_payload(plugin, "some_method", (nested_data,), {})
+
+        assert payload.moduleName == plugin.module_name
+        # repr() should handle nested structures
+        assert "plugin.some_method(" in payload.script
+        assert "'key': [1, 2, {'inner': 'value'}]" in payload.script
+
+    def test_build_payload_method_name_preserved(self, plugin):
+        """Test that method names are correctly preserved in the script."""
+        from designer_plugin.d3sdk.client import build_payload
+
+        method_names = ["method1", "method_with_underscores", "methodCamelCase"]
+
+        for method_name in method_names:
+            payload = build_payload(plugin, method_name, (), {})
+            assert f"plugin.{method_name}()" in payload.script
