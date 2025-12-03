@@ -221,7 +221,7 @@ async with D3AsyncSession('localhost', 80, ["mymodule"]) as session:
     time: str = await session.rpc(
         rename_surface_get_time.payload("surface 1", "surface 2"))
 
-    # Use plugin() for full response with logs and status
+    # Use execute() for full response with logs and status
     from designer_plugin import PluginResponse
     response: PluginResponse = await session.execute(
         rename_surface_get_time.payload("surface 1", "surface 2"))

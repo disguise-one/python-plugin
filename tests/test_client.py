@@ -261,6 +261,144 @@ class TestValidateAndExtractArgs:
         with pytest.raises(TypeError):
             validate_and_extract_args(sig, True, (None, 1, 2, 3), {})
 
+    def test_var_positional_args_extraction(self):
+        """Test that *args are correctly unpacked into positional arguments."""
+        from designer_plugin.d3sdk.ast_utils import validate_and_extract_args
+        import inspect
+
+        def test_func(self, a, b, *args):
+            pass
+
+        sig = inspect.signature(test_func)
+        positional, keyword = validate_and_extract_args(sig, True, (None, 1, 2, 3, 4, 5), {})
+
+        assert positional == (1, 2, 3, 4, 5)
+        assert keyword == {}
+
+    def test_var_positional_empty_args(self):
+        """Test that empty *args are handled correctly."""
+        from designer_plugin.d3sdk.ast_utils import validate_and_extract_args
+        import inspect
+
+        def test_func(self, a, b, *args):
+            pass
+
+        sig = inspect.signature(test_func)
+        positional, keyword = validate_and_extract_args(sig, True, (None, 1, 2), {})
+
+        assert positional == (1, 2)
+        assert keyword == {}
+
+    def test_var_keyword_kwargs_extraction(self):
+        """Test that **kwargs are correctly unpacked into keyword arguments."""
+        from designer_plugin.d3sdk.ast_utils import validate_and_extract_args
+        import inspect
+
+        def test_func(self, a, **kwargs):
+            pass
+
+        sig = inspect.signature(test_func)
+        positional, keyword = validate_and_extract_args(
+            sig, True, (None, 1), {'x': 10, 'y': 20, 'z': 30}
+        )
+
+        assert positional == (1,)
+        assert keyword == {'x': 10, 'y': 20, 'z': 30}
+
+    def test_var_keyword_empty_kwargs(self):
+        """Test that empty **kwargs are handled correctly."""
+        from designer_plugin.d3sdk.ast_utils import validate_and_extract_args
+        import inspect
+
+        def test_func(self, a, **kwargs):
+            pass
+
+        sig = inspect.signature(test_func)
+        positional, keyword = validate_and_extract_args(sig, True, (None, 1), {})
+
+        assert positional == (1,)
+        assert keyword == {}
+
+    def test_mixed_args_and_kwargs(self):
+        """Test function with both *args and **kwargs."""
+        from designer_plugin.d3sdk.ast_utils import validate_and_extract_args
+        import inspect
+
+        def test_func(self, a, b, *args, **kwargs):
+            pass
+
+        sig = inspect.signature(test_func)
+        positional, keyword = validate_and_extract_args(
+            sig, True, (None, 1, 2, 3, 4), {'x': 10, 'y': 20}
+        )
+
+        assert positional == (1, 2, 3, 4)
+        assert keyword == {'x': 10, 'y': 20}
+
+    def test_complex_signature_with_all_parameter_types(self):
+        """Test function with all parameter types: positional, *args, keyword-only, **kwargs."""
+        from designer_plugin.d3sdk.ast_utils import validate_and_extract_args
+        import inspect
+
+        def test_func(self, a, b, *args, c, d=10, **kwargs):
+            pass
+
+        sig = inspect.signature(test_func)
+        positional, keyword = validate_and_extract_args(
+            sig, True, (None, 1, 2, 3, 4), {'c': 5, 'd': 15, 'x': 100, 'y': 200}
+        )
+
+        # Positional should include a, b, and *args
+        assert positional == (1, 2, 3, 4)
+        # Keyword should include c, d (keyword-only), and **kwargs
+        assert keyword == {'c': 5, 'd': 15, 'x': 100, 'y': 200}
+
+    def test_positional_only_with_var_positional(self):
+        """Test function with positional-only parameters and *args."""
+        from designer_plugin.d3sdk.ast_utils import validate_and_extract_args
+        import inspect
+
+        def test_func(self, a, b, /, *args):
+            pass
+
+        sig = inspect.signature(test_func)
+        positional, keyword = validate_and_extract_args(sig, True, (None, 1, 2, 3, 4, 5), {})
+
+        assert positional == (1, 2, 3, 4, 5)
+        assert keyword == {}
+
+    def test_var_positional_preserves_order(self):
+        """Test that *args values maintain their order in the positional list."""
+        from designer_plugin.d3sdk.ast_utils import validate_and_extract_args
+        import inspect
+
+        def test_func(self, *args):
+            pass
+
+        sig = inspect.signature(test_func)
+        positional, keyword = validate_and_extract_args(
+            sig, True, (None, 'a', 'b', 'c', 'd', 'e'), {}
+        )
+
+        assert positional == ('a', 'b', 'c', 'd', 'e')
+        assert keyword == {}
+
+    def test_var_keyword_with_keyword_only_params(self):
+        """Test that **kwargs works correctly with keyword-only parameters."""
+        from designer_plugin.d3sdk.ast_utils import validate_and_extract_args
+        import inspect
+
+        def test_func(self, a, *, b, c, **kwargs):
+            pass
+
+        sig = inspect.signature(test_func)
+        positional, keyword = validate_and_extract_args(
+            sig, True, (None, 1), {'b': 2, 'c': 3, 'x': 10, 'y': 20}
+        )
+
+        assert positional == (1,)
+        assert keyword == {'b': 2, 'c': 3, 'x': 10, 'y': 20}
+
 
 class TestModuleNameOverride:
     """Test suite for module_name override functionality."""

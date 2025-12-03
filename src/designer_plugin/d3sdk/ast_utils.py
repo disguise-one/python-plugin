@@ -355,7 +355,14 @@ def validate_and_extract_args(
         if param_name in args_dict:
             if param.kind in (param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD):
                 positional.append(args_dict[param_name])
+            elif param.kind == param.VAR_POSITIONAL:
+                # Unpack *args into positional list
+                positional.extend(args_dict[param_name])
+            elif param.kind == param.VAR_KEYWORD:
+                # Unpack **kwargs into keyword dict
+                keyword.update(args_dict[param_name])
             else:
+                # KEYWORD_ONLY parameters
                 keyword[param_name] = args_dict[param_name]
 
     return tuple(positional), keyword
