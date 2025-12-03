@@ -35,6 +35,7 @@ where = ["src"]
 Homepage = "https://github.com/disguise-one/python-plugin"
 Documentation = "https://developer.disguise.one/plugins/python-execution-api/"
 Issues = "https://github.com/disguise-one/python-plugin/issues"
+Sponsor = "https://www.disguise.one"
 
 # Package development
 [dependency-groups]
