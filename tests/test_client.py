@@ -916,7 +916,7 @@ class TestInitWrapperSuperCall:
         assert hasattr(plugin, '_override_module_name')
         assert hasattr(plugin, 'custom_attr')
 
-        # Verify attribute values are properly initialized
+        # Verify attribute values are properly initialised
         assert plugin._hostname is None
         assert plugin._port is None
         assert plugin._override_module_name is None
@@ -965,22 +965,22 @@ class TestInitWrapperSuperCall:
         assert plugin._override_module_name is None
         assert plugin.custom_attr == "test"
 
-    def test_no_double_initialization_with_super_call(self):
-        """Test that calling super().__init__() doesn't cause double initialization."""
-        initialization_count = []
+    def test_no_double_initialisation_with_super_call(self):
+        """Test that calling super().__init__() doesn't cause double initialisation."""
+        initialisation_count = []
 
         class PluginWithSuper(D3PluginClient):
             def __init__(self):
                 super().__init__()
-                initialization_count.append(1)
+                initialisation_count.append(1)
 
             def test_method(self) -> str:
                 return "test"
 
         plugin = PluginWithSuper()
 
-        # Should have been initialized exactly once (by the user's __init__)
-        assert len(initialization_count) == 1
+        # Should have been initialised exactly once (by the user's __init__)
+        assert len(initialisation_count) == 1
 
         # Attributes should still be properly set
         assert plugin._hostname is None

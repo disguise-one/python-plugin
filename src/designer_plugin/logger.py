@@ -38,7 +38,7 @@ for specific submodules independently:
 
 Log messages will show their source module:
 
-    2025-11-29 10:15:23 [designer_plugin.api:INFO] API initialized
+    2025-11-29 10:15:23 [designer_plugin.api:INFO] API initialised
     2025-11-29 10:15:24 [designer_plugin.d3sdk.client:DEBUG] Connecting to server
     2025-11-29 10:15:25 [designer_plugin.models:INFO] Model loaded
 

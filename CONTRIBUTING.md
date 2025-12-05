@@ -231,8 +231,8 @@ class TestMyFeature:
 When reporting bugs, please include:
 - Description of the issue
 - Steps to reproduce
-- Expected behavior
-- Actual behavior
+- Expected behaviour
+- Actual behaviour
 - Python version
 - Package version
 - Minimal code example (if applicable)

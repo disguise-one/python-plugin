@@ -163,7 +163,7 @@ def create_init_wrapper(original_init: Callable[..., Any]) -> Callable[..., None
 
     This ensures that even if the user forgets to call super().__init__(),
     the required attributes (_hostname, _port, _override_module_name) are
-    still initialized, preventing AttributeError in methods like in_session().
+    still initialised, preventing AttributeError in methods like in_session().
 
     Args:
         original_init: The user-defined __init__ method.
@@ -174,7 +174,7 @@ def create_init_wrapper(original_init: Callable[..., Any]) -> Callable[..., None
 
     @functools.wraps(original_init)
     def wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
-        # Call parent's __init__ first to initialize required attributes
+        # Call parent's __init__ first to initialise required attributes
         D3PluginClient.__init__(self)
         # Then call user's __init__
         original_init(self, *args, **kwargs)
@@ -489,7 +489,7 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
         Returns:
             The module name to use for registration and API calls.
         """
-        return self._override_module_name or self.module_name  # type: ignore 
+        return self._override_module_name or self.module_name  # type: ignore
 
     def _get_register_module_content(self) -> str:
         """Generate the complete module content to register with Designer.
