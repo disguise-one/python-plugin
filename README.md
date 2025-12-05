@@ -241,17 +241,10 @@ with D3Session('localhost', 80, ["mymodule"]) as session:
 By default, `designer_plugin` logging is disabled. To enable it:
 
 ```python
-# Quick debug mode
-from designer_plugin.logger import enable_debug_logging
-enable_debug_logging()
-
-# Or configure via standard logging
 import logging
 logging.basicConfig(level=logging.INFO)
 logging.getLogger('designer_plugin').setLevel(logging.DEBUG)
 ```
-
-For production, use your application's logging configuration instead of `enable_debug_logging()`.
 
 <br/>
 
