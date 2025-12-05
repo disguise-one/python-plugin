@@ -3,30 +3,39 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "disguise-designer-plugin"
-version = "1.1.0"
-description = "A plugin for the Disguise Designer application."
+name = "designer-plugin"
+version = "1.2.0"
+description = "Python library for creating Disguise Designer plugins with DNS-SD discovery and remote Python execution"
 authors = [
     { name = "Tom Whittock", email = "tom.whittock@disguise.one" },
     { name = "Taegyun Ha", email = "taegyun.ha@disguise.one" }
 ]
 dependencies = [
+    "aiohttp>=3.13.2",
+    "pydantic>=2.12.4",
+    "requests>=2.32.5",
+    "types-requests>=2.32.4.20250913",
     "zeroconf>=0.39.0",
 ]
 requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent"
 ]
 readme = "README.md"
+license = "MIT"
+
+[tool.setuptools.package-data]
+designer_plugin = ["py.typed"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [project.urls]
 Homepage = "https://github.com/disguise-one/python-plugin"
+Documentation = "https://developer.disguise.one/plugins/python-execution-api/"
 Issues = "https://github.com/disguise-one/python-plugin/issues"
+Sponsor = "https://www.disguise.one"
 
 # Package development
 [dependency-groups]
@@ -35,13 +44,13 @@ dev = [
     "pre-commit>=4.4.0",
     "pytest>=9.0.1",
     "ruff>=0.14.5",
+    "twine>=6.2.0",
 ]
 
 [tool.ruff]
-line-length = 100
 target-version = "py311"
 exclude = [
-    "test",
+    "tests",
     ".venv",
     ".devcontainer",
 ]
@@ -94,7 +103,7 @@ module = "zeroconf.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["test"]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
