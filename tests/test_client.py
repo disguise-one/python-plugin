@@ -895,6 +895,89 @@ class TestInstanceCodeGenerationWithDefaults:
         assert '99' in plugin3.instance_code
 
 
+class TestMetaclassCallGuard:
+    """Test suite for metaclass __call__ guard for base/non-instrumented classes.
+
+    This addresses the issue where D3PluginClientMeta.__new__ skips instrumentation
+    when name == "D3PluginClient", so the base class never gets filtered_init_args/
+    instance_code. However, __call__ unconditionally reads cls.filtered_init_args,
+    causing AttributeError when instantiating D3PluginClient() directly or any
+    non-instrumented class.
+    """
+
+    def test_base_class_instantiation_without_args(self):
+        """Test that base D3PluginClient can be instantiated without arguments.
+
+        This would raise AttributeError without the guard in __call__.
+        """
+        # This should not raise AttributeError
+        plugin = D3PluginClient()
+
+        # Verify the instance is created properly
+        assert isinstance(plugin, D3PluginClient)
+        assert hasattr(plugin, '_hostname')
+        assert hasattr(plugin, '_port')
+        assert hasattr(plugin, '_override_module_name')
+
+    def test_base_class_does_not_have_instrumentation_attributes(self):
+        """Test that base D3PluginClient class lacks instrumentation attributes."""
+        # The base class should not have these attributes
+        assert not hasattr(D3PluginClient, 'filtered_init_args')
+        assert not hasattr(D3PluginClient, 'source_code')
+        assert not hasattr(D3PluginClient, 'source_code_py27')
+
+    def test_instrumented_subclass_has_attributes(self):
+        """Test that instrumented subclasses do have instrumentation attributes."""
+        class InstrumentedPlugin(D3PluginClient):
+            def __init__(self, a: int):
+                super().__init__()
+                self.a = a
+
+            def test_method(self) -> int:
+                return self.a
+
+        # Instrumented subclasses should have these attributes
+        assert hasattr(InstrumentedPlugin, 'filtered_init_args')
+        assert hasattr(InstrumentedPlugin, 'source_code')
+        assert hasattr(InstrumentedPlugin, 'source_code_py27')
+
+    def test_instrumented_subclass_instantiation_works(self):
+        """Test that instrumented subclasses can still be instantiated normally."""
+        class InstrumentedPlugin(D3PluginClient):
+            def __init__(self, a: int, b: str = "default"):
+                super().__init__()
+                self.a = a
+                self.b = b
+
+            def test_method(self) -> str:
+                return f"{self.a}:{self.b}"
+
+        # This should work as before
+        plugin = InstrumentedPlugin(42, "test")
+
+        assert isinstance(plugin, InstrumentedPlugin)
+        assert plugin.a == 42
+        assert plugin.b == "test"
+
+        # Should have instance_code generated
+        assert hasattr(plugin, 'instance_code')
+        assert 'InstrumentedPlugin' in plugin.instance_code
+        assert '42' in plugin.instance_code
+
+    def test_base_class_instance_no_instance_code(self):
+        """Test that base D3PluginClient instance doesn't get instance_code.
+
+        Since the base class bypasses instrumentation, instances shouldn't
+        have instance_code attribute (or it should be handled gracefully).
+        """
+        plugin = D3PluginClient()
+
+        # Base class instances shouldn't have instance_code
+        # (or if they do, it should be handled gracefully)
+        # The important thing is no AttributeError during instantiation
+        assert isinstance(plugin, D3PluginClient)
+
+
 class TestInitWrapperSuperCall:
     """Test suite for automatic parent __init__ calling when user forgets super().__init__()."""
 

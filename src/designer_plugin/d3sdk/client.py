@@ -302,6 +302,11 @@ class D3PluginClientMeta(type):
         Returns:
             An instance of the plugin class with instance_code attribute set
         """
+        # Base class (and any non-instrumented subclasses) don't carry
+        # remote-instantiation metadata; fall back to normal construction.
+        if not hasattr(cls, "filtered_init_args"):
+            return super().__call__(*args, **kwargs)
+
         # Build argument string for remote instantiation, respecting defaults.
         param_names: list[str] = cls.filtered_init_args
         arg_strings: list[str] = []
