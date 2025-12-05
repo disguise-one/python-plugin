@@ -893,3 +893,121 @@ class TestInstanceCodeGenerationWithDefaults:
         assert '10' in plugin3.instance_code
         # Should include the keyword argument
         assert '99' in plugin3.instance_code
+
+
+class TestInitWrapperSuperCall:
+    """Test suite for automatic parent __init__ calling when user forgets super().__init__()."""
+
+    def test_plugin_without_super_init_has_required_attributes(self):
+        """Test that plugin works even without calling super().__init__()."""
+        class PluginWithoutSuper(D3PluginClient):
+            def __init__(self):
+                # Deliberately NOT calling super().__init__()
+                self.custom_attr = "test"
+
+            def test_method(self) -> str:
+                return self.custom_attr
+
+        plugin = PluginWithoutSuper()
+
+        # These attributes should exist even without super().__init__()
+        assert hasattr(plugin, '_hostname')
+        assert hasattr(plugin, '_port')
+        assert hasattr(plugin, '_override_module_name')
+        assert hasattr(plugin, 'custom_attr')
+
+        # Verify attribute values are properly initialized
+        assert plugin._hostname is None
+        assert plugin._port is None
+        assert plugin._override_module_name is None
+        assert plugin.custom_attr == "test"
+
+    def test_in_session_works_without_super_init(self):
+        """Test that in_session() method works without super().__init__()."""
+        class PluginWithoutSuper(D3PluginClient):
+            def __init__(self):
+                self.a = "hey"
+
+            def fn(self, a: int) -> int:
+                return a
+
+        plugin = PluginWithoutSuper()
+
+        # in_session() should not raise AttributeError
+        assert plugin.in_session() is False
+
+        # After setting hostname and port
+        plugin._hostname = "localhost"
+        plugin._port = 80
+        assert plugin.in_session() is True
+
+    def test_plugin_with_super_init_still_works(self):
+        """Test that plugin still works when properly calling super().__init__()."""
+        class PluginWithSuper(D3PluginClient):
+            def __init__(self):
+                super().__init__()
+                self.custom_attr = "test"
+
+            def test_method(self) -> str:
+                return self.custom_attr
+
+        plugin = PluginWithSuper()
+
+        # All attributes should be present
+        assert hasattr(plugin, '_hostname')
+        assert hasattr(plugin, '_port')
+        assert hasattr(plugin, '_override_module_name')
+        assert hasattr(plugin, 'custom_attr')
+
+        # Verify attribute values
+        assert plugin._hostname is None
+        assert plugin._port is None
+        assert plugin._override_module_name is None
+        assert plugin.custom_attr == "test"
+
+    def test_no_double_initialization_with_super_call(self):
+        """Test that calling super().__init__() doesn't cause double initialization."""
+        initialization_count = []
+
+        class PluginWithSuper(D3PluginClient):
+            def __init__(self):
+                super().__init__()
+                initialization_count.append(1)
+
+            def test_method(self) -> str:
+                return "test"
+
+        plugin = PluginWithSuper()
+
+        # Should have been initialized exactly once (by the user's __init__)
+        assert len(initialization_count) == 1
+
+        # Attributes should still be properly set
+        assert plugin._hostname is None
+        assert plugin._port is None
+        assert plugin._override_module_name is None
+
+    def test_plugin_with_args_without_super_init(self):
+        """Test plugin with constructor arguments but no super().__init__() call."""
+        class PluginWithArgs(D3PluginClient):
+            def __init__(self, value: int, name: str):
+                # Not calling super().__init__()
+                self.value = value
+                self.name = name
+
+            def test_method(self) -> str:
+                return f"{self.name}={self.value}"
+
+        plugin = PluginWithArgs(42, "test")
+
+        # Required attributes should exist
+        assert hasattr(plugin, '_hostname')
+        assert hasattr(plugin, '_port')
+        assert hasattr(plugin, '_override_module_name')
+
+        # Custom attributes should be set
+        assert plugin.value == 42
+        assert plugin.name == "test"
+
+        # in_session() should work
+        assert plugin.in_session() is False
