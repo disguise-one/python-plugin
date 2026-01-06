@@ -83,11 +83,11 @@ To enable IDE autocomplete and type checking for Designer's Python API, install 
 pip install designer-plugin-pystub
 ```
 
-Once installed, import the stubs using the `TYPE_CHECKING` pattern. This provides type hints in your IDE without affecting runtime execution:
+Once installed, import the stubs.
+> **Important:** `pystub` provides type hints for Designer's API objects but not their implementations. These objects only exist in Designer's runtime and cannot be used in local Python code. They must only be referenced in code that will be executed remotely on Designer.
+
 ```python
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from designer_plugin.pystub.d3 import *
+from designer_plugin.pystub import *
 ```
 
 This allows you to get autocomplete for Designer objects like `resourceManager`, `Screen2`, `Path`, etc., while writing your plugin code.
@@ -100,9 +100,7 @@ The Client API allows you to define a class with methods that execute remotely o
 
 ```python
 from designer_plugin.d3sdk import D3PluginClient
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from designer_plugin.pystub.d3 import *
+from designer_plugin.pystub import *
 
 # 1. Sync example -----------------------------------
 class MySyncPlugin(D3PluginClient):
@@ -186,9 +184,7 @@ Both `D3AsyncSession` and `D3Session` provide two methods for executing function
 
 ```python
 from designer_plugin.d3sdk import d3pythonscript, d3function, D3AsyncSession
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from designer_plugin.pystub.d3 import *
+from designer_plugin.pystub import *
 
 # 1. @d3pythonscript - simple one-off execution
 @d3pythonscript
@@ -251,4 +247,3 @@ logging.getLogger('designer_plugin').setLevel(logging.DEBUG)
 # License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-

@@ -125,7 +125,7 @@ async def d3_api_arequest(
 
 ###############################################################################
 # API async interface
-async def d3_api_aplugin(
+async def d3_api_aexecute(
     hostname: str,
     port: int,
     payload: PluginPayload[RetType],
@@ -219,7 +219,7 @@ async def d3_api_aregister_module(
 
 ###############################################################################
 # API sync interface
-def d3_api_plugin(
+def d3_api_execute(
     hostname: str,
     port: int,
     payload: PluginPayload[RetType],
