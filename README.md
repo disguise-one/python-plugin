@@ -84,7 +84,7 @@ pip install designer-plugin-pystub
 ```
 
 Once installed, import the stubs.
-> **Important:** `pystub` provides type hints for Designer's API objects but not their implementations. These objects only exist in Designer's runtime and cannot be used in local Python code. They must only be referenced in code that will be executed remotely on Designer.
+> **Important:** `pystub` provides type hints for Designer's API objects but not their implementations. These objects only exist in Designer's runtime and cannot be used in local Python code. They must only be referenced in code that will be executed remotely in Designer.
 
 ```python
 from designer_plugin.pystub import *
