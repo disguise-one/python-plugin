@@ -277,7 +277,7 @@ class D3AsyncSession(D3SessionBase):
         """
         if payload.moduleName and payload.moduleName not in self.registered_modules:
             await self.register_module(payload.moduleName)
-            
+
         return await d3_api_aexecute(self.hostname, self.port, payload, timeout_sec)
 
     async def register_module(
