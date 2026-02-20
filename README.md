@@ -167,7 +167,7 @@ The Functional API offers two decorators: `@d3pythonscript` and `@d3function`:
 - **`@d3function`**:
   - Must be registered on Designer before execution.
   - Functions decorated with the same `module_name` are grouped together and can call each other, enabling function chaining and code reuse.
-  - Registration is automatic when you pass module names to the session context manager (e.g., `D3AsyncSession('localhost', 80, ["mymodule"])`). If you don't provide module names, no registration occurs.
+  - Registration happens automatically on the first call to `execute()` or `rpc()` that references the module — no need to declare modules upfront. You can also pre-register specific modules by passing them to the session context manager (e.g., `D3AsyncSession('localhost', 80, {"mymodule"})`).
 
 ### Session API Methods
 
@@ -209,11 +209,11 @@ def my_time() -> str:
     return str(datetime.datetime.now())
 
 # Usage with async session
-async with D3AsyncSession('localhost', 80, ["mymodule"]) as session:
+async with D3AsyncSession('localhost', 80) as session:
     # d3pythonscript: no registration needed
     await session.rpc(rename_surface.payload("surface 1", "surface 2"))
 
-    # d3function: registered automatically via context manager
+    # d3function: module is registered automatically on first call
     time: str = await session.rpc(
         rename_surface_get_time.payload("surface 1", "surface 2"))
 
@@ -226,7 +226,7 @@ async with D3AsyncSession('localhost', 80, ["mymodule"]) as session:
 
 # Sync usage
 from designer_plugin.d3sdk import D3Session
-with D3Session('localhost', 80, ["mymodule"]) as session:
+with D3Session('localhost', 80) as session:
     session.rpc(rename_surface.payload("surface 1", "surface 2"))
 ```
 
