@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-01-06
+
+### Changed
+- `d3_api_plugin` has been renamed to `d3_api_execute`.
+- `d3_api_aplugin` has been renamed to `d3_api_aexecute`.
+- Updated documentation to reflect `pystub` proxy support.
+
 ## [1.2.0] - 2025-12-02
 
 ### Added

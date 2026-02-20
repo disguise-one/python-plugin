@@ -71,7 +71,7 @@ class TestSignatureValidation:
 
     def test_correct_arguments_sync(self, plugin, mock_response):
         """Test that correct arguments pass through successfully."""
-        with patch('designer_plugin.d3sdk.client.d3_api_plugin', return_value=mock_response) as mock_api:
+        with patch('designer_plugin.d3sdk.client.d3_api_execute', return_value=mock_response) as mock_api:
             plugin._hostname = "localhost"
             plugin._port = 80
 
@@ -114,7 +114,7 @@ class TestSignatureValidation:
 
     def test_method_with_defaults_partial_args(self, plugin, mock_response):
         """Test method with default parameters using partial arguments."""
-        with patch('designer_plugin.d3sdk.client.d3_api_plugin', return_value=mock_response):
+        with patch('designer_plugin.d3sdk.client.d3_api_execute', return_value=mock_response):
             plugin._hostname = "localhost"
             plugin._port = 80
 
@@ -124,7 +124,7 @@ class TestSignatureValidation:
 
     def test_method_with_defaults_override(self, plugin, mock_response):
         """Test method with default parameters overriding defaults."""
-        with patch('designer_plugin.d3sdk.client.d3_api_plugin', return_value=mock_response):
+        with patch('designer_plugin.d3sdk.client.d3_api_execute', return_value=mock_response):
             plugin._hostname = "localhost"
             plugin._port = 80
 
@@ -134,7 +134,7 @@ class TestSignatureValidation:
 
     def test_method_with_defaults_keyword(self, plugin, mock_response):
         """Test method with default parameters using keyword arguments."""
-        with patch('designer_plugin.d3sdk.client.d3_api_plugin', return_value=mock_response):
+        with patch('designer_plugin.d3sdk.client.d3_api_execute', return_value=mock_response):
             plugin._hostname = "localhost"
             plugin._port = 80
 
@@ -144,7 +144,7 @@ class TestSignatureValidation:
 
     def test_keyword_only_parameters(self, plugin, mock_response):
         """Test method with keyword-only parameters."""
-        with patch('designer_plugin.d3sdk.client.d3_api_plugin', return_value=mock_response):
+        with patch('designer_plugin.d3sdk.client.d3_api_execute', return_value=mock_response):
             plugin._hostname = "localhost"
             plugin._port = 80
 
@@ -162,7 +162,7 @@ class TestSignatureValidation:
 
     def test_mixed_parameters(self, plugin, mock_response):
         """Test method with mixed parameter types."""
-        with patch('designer_plugin.d3sdk.client.d3_api_plugin', return_value=mock_response):
+        with patch('designer_plugin.d3sdk.client.d3_api_execute', return_value=mock_response):
             plugin._hostname = "localhost"
             plugin._port = 80
 

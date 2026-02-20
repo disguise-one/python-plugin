@@ -9,10 +9,10 @@ import aiohttp
 
 from designer_plugin.api import (
     Method,
-    d3_api_aplugin,
+    d3_api_aexecute,
     d3_api_aregister_module,
     d3_api_arequest,
-    d3_api_plugin,
+    d3_api_execute,
     d3_api_register_module,
     d3_api_request,
 )
@@ -117,7 +117,7 @@ class D3Session(D3SessionBase):
         Raises:
             PluginException: If the plugin execution fails.
         """
-        return d3_api_plugin(self.hostname, self.port, payload, timeout_sec)
+        return d3_api_execute(self.hostname, self.port, payload, timeout_sec)
 
     def request(self, method: Method, url_endpoint: str, **kwargs: Any) -> Any:
         """Make a generic HTTP request to Designer API.
@@ -270,7 +270,7 @@ class D3AsyncSession(D3SessionBase):
         Raises:
             PluginException: If the plugin execution fails.
         """
-        return await d3_api_aplugin(self.hostname, self.port, payload, timeout_sec)
+        return await d3_api_aexecute(self.hostname, self.port, payload, timeout_sec)
 
     async def register_module(
         self, module_name: str, timeout_sec: float | None = None
