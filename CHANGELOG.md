@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.3.0] - 2026-01-06
 
+### Added
+- **Lazy module registration**: `D3Session.execute()` and `D3AsyncSession.execute()` now automatically register a `@d3function` module on first use, eliminating the need to declare all modules in `context_modules` upfront.
+- `registered_modules` tracking on session instances prevents duplicate registration calls.
+
 ### Changed
 - `d3_api_plugin` has been renamed to `d3_api_execute`.
 - `d3_api_aplugin` has been renamed to `d3_api_aexecute`.
+- `context_modules` parameter type updated from `list[str]` to `set[str]` on `D3Session`, `D3AsyncSession`, and `D3SessionBase`.
 - Updated documentation to reflect `pystub` proxy support.
 
 ## [1.2.0] - 2025-12-02
