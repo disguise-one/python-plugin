@@ -12,10 +12,13 @@ import pytest
 
 from designer_plugin.d3sdk.ast_utils import (
     ConvertToPython27,
+    ImportAlias,
+    PackageInfo,
     convert_class_to_py27,
     convert_function_to_py27,
     filter_base_classes,
     filter_init_args,
+    find_imports_for_function,
     find_packages_in_current_file,
     get_class_node,
     get_source,
@@ -1125,6 +1128,122 @@ class TestEdgeCases:
         func = transformed.body[0]
         assert isinstance(func, ast.FunctionDef)
         assert len(func.body) == 3  # Two assignments and one return
+
+
+class TestPackageInfo:
+    """Tests for PackageInfo and ImportAlias models."""
+
+    def test_import_package_only(self):
+        """import numpy"""
+        pkg = PackageInfo(package="numpy")
+        assert pkg.to_import_statement() == "import numpy"
+
+    def test_import_package_with_alias(self):
+        """import numpy as np"""
+        pkg = PackageInfo(package="numpy", alias="np")
+        assert pkg.to_import_statement() == "import numpy as np"
+
+    def test_from_import_single_method(self):
+        """from pathlib import Path"""
+        pkg = PackageInfo(
+            package="pathlib",
+            methods=[ImportAlias(name="Path")],
+        )
+        assert pkg.to_import_statement() == "from pathlib import Path"
+
+    def test_from_import_multiple_methods(self):
+        """from os.path import join, exists"""
+        pkg = PackageInfo(
+            package="os.path",
+            methods=[
+                ImportAlias(name="join"),
+                ImportAlias(name="exists"),
+            ],
+        )
+        assert pkg.to_import_statement() == "from os.path import join, exists"
+
+    def test_from_import_method_with_alias(self):
+        """from collections import defaultdict as dd"""
+        pkg = PackageInfo(
+            package="collections",
+            methods=[ImportAlias(name="defaultdict", asname="dd")],
+        )
+        assert pkg.to_import_statement() == "from collections import defaultdict as dd"
+
+    def test_from_import_mixed_aliases(self):
+        """from collections import OrderedDict, defaultdict as dd"""
+        pkg = PackageInfo(
+            package="collections",
+            methods=[
+                ImportAlias(name="OrderedDict"),
+                ImportAlias(name="defaultdict", asname="dd"),
+            ],
+        )
+        result = pkg.to_import_statement()
+        assert result == "from collections import OrderedDict, defaultdict as dd"
+
+
+class TestFindImportsForFunction:
+    """Tests for find_imports_for_function."""
+
+    def test_finds_used_import(self):
+        """Function using ast should get 'import ast' extracted."""
+        # This function uses ast.parse which is from 'import ast' at file top
+        def uses_ast():
+            return ast.parse("x = 1")
+
+        packages = find_imports_for_function(uses_ast)
+        statements = [p.to_import_statement() for p in packages]
+        assert "import ast" in statements
+
+    def test_excludes_unused_import(self):
+        """Function not using a module should not include it."""
+        def uses_nothing():
+            return 42
+
+        packages = find_imports_for_function(uses_nothing)
+        statements = [p.to_import_statement() for p in packages]
+        # Should not include ast, textwrap, etc. since they're not used
+        assert "import types" not in statements
+
+    def test_finds_from_import(self):
+        """Function using a 'from X import Y' name should include it."""
+        def uses_textwrap():
+            return textwrap.dedent("  hello")
+
+        packages = find_imports_for_function(uses_textwrap)
+        statements = [p.to_import_statement() for p in packages]
+        assert "import textwrap" in statements
+
+    def test_returns_package_info_objects(self):
+        """Return type should be list of PackageInfo."""
+        def simple_func():
+            return ast.dump(ast.parse("1"))
+
+        packages = find_imports_for_function(simple_func)
+        assert all(isinstance(p, PackageInfo) for p in packages)
+
+    def test_sorted_output(self):
+        """Output should be sorted by import statement."""
+        def uses_multiple():
+            _ = textwrap.dedent("x")
+            _ = ast.parse("y")
+            return inspect.getsource(uses_multiple)
+
+        packages = find_imports_for_function(uses_multiple)
+        statements = [p.to_import_statement() for p in packages]
+        assert statements == sorted(statements)
+
+    def test_excludes_typing_imports(self):
+        """Typing imports should be excluded."""
+        # The 'Any' import from typing at the file top should never appear
+        def uses_nothing():
+            return 1
+
+        packages = find_imports_for_function(uses_nothing)
+        statements = [p.to_import_statement() for p in packages]
+        typing_imports = [s for s in statements if "typing" in s]
+        assert len(typing_imports) == 0
 
 
 if __name__ == "__main__":

@@ -15,7 +15,9 @@ from typing import Any, Generic, ParamSpec, TypeVar
 from pydantic import BaseModel, Field
 
 from designer_plugin.d3sdk.ast_utils import (
+    PackageInfo,
     convert_function_to_py27,
+    find_imports_for_function,
     find_packages_in_current_file,
     validate_and_bind_signature,
     validate_and_extract_args,
@@ -50,6 +52,9 @@ class FunctionInfo(BaseModel):
     )
     args: list[str] = Field(
         default=[], description="list of arguments from extracted function"
+    )
+    packages: list[PackageInfo] = Field(
+        default=[], description="list of packages/imports used by the function"
     )
 
 
@@ -114,6 +119,8 @@ def extract_function_info(func: Callable[..., Any]) -> FunctionInfo:
     for stmt in body_nodes_py27:
         body_py27 += ast.unparse(stmt) + "\n"
 
+    packages = find_imports_for_function(func)
+
     return FunctionInfo(
         source_code=source_code_py3,
         source_code_py27=source_code_py27,
@@ -121,6 +128,7 @@ def extract_function_info(func: Callable[..., Any]) -> FunctionInfo:
         body=body.strip(),
         body_py27=body_py27.strip(),
         args=args,
+        packages=packages,
     )
 
 
@@ -255,6 +263,11 @@ class D3Function(D3PythonScript[P, T]):
         self._module_name: str = module_name
 
         super().__init__(func)
+
+        # Auto-register packages used by this function
+        D3Function._available_packages[module_name].update(
+            pkg.to_import_statement() for pkg in self._function_info.packages
+        )
 
         # Update the function in case the function was updated in the same session.
         # For example, jupyter notebook server can be running, but function signature can

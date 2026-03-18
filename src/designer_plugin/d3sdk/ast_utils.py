@@ -4,10 +4,66 @@ Copyright (c) 2025 Disguise Technologies ltd
 """
 
 import ast
+import functools
 import inspect
 import textwrap
 import types
+from collections.abc import Callable
 from typing import Any
+
+from pydantic import BaseModel, Field
+
+
+###############################################################################
+# Package info models
+class ImportAlias(BaseModel):
+    """Represents a single imported name with an optional alias.
+
+    Mirrors the structure of ast.alias for Pydantic compatibility.
+    """
+
+    name: str = Field(description="The imported name (e.g., 'Path' in 'from pathlib import Path')")
+    asname: str | None = Field(
+        default=None,
+        description="The alias (e.g., 'np' in 'import numpy as np')",
+    )
+
+
+class PackageInfo(BaseModel):
+    """Structured representation of a Python import statement.
+
+    Rendering rules (via to_import_statement using ast.unparse):
+    - package only              → import package
+    - package + alias           → import package as alias
+    - package + methods         → from package import method1, method2
+    - package + methods w/alias → from package import method1 as alias1
+    """
+
+    package: str = Field(description="The module/package name to import")
+    alias: str | None = Field(
+        default=None,
+        description="Alias for the package (e.g., 'np' in 'import numpy as np')",
+    )
+    methods: list[ImportAlias] = Field(
+        default=[],
+        description="Imported names for 'from X import ...' style imports",
+    )
+
+    def to_import_statement(self) -> str:
+        """Render back to a Python import statement using ast.unparse."""
+        if self.methods:
+            node = ast.ImportFrom(
+                module=self.package,
+                names=[
+                    ast.alias(name=m.name, asname=m.asname) for m in self.methods
+                ],
+                level=0,
+            )
+        else:
+            node = ast.Import(
+                names=[ast.alias(name=self.package, asname=self.alias)]
+            )
+        return ast.unparse(node)
 
 
 ###############################################################################
@@ -460,3 +516,144 @@ def find_packages_in_current_file(caller_stack: int = 1) -> list[str]:
             imports.append(line_text)
 
     return sorted(set(imports))
+
+
+###############################################################################
+# Function-scoped import extraction utility
+def _collect_used_names(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
+    """Collect all identifier names used inside a function body.
+
+    Walks the function's AST body and extracts:
+    - Simple names (ast.Name nodes, e.g., ``foo`` in ``foo()``)
+    - Root names of attribute chains (e.g., ``np`` in ``np.array()``)
+
+    Args:
+        func_node: The function AST node to analyse.
+
+    Returns:
+        Set of identifier strings used in the function body.
+    """
+    names: set[str] = set()
+    for node in ast.walk(func_node):
+        if isinstance(node, ast.Name):
+            names.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            # Walk down the attribute chain to find the root name
+            root = node
+            while isinstance(root, ast.Attribute):
+                root = root.value
+            if isinstance(root, ast.Name):
+                names.add(root.id)
+    return names
+
+
+# Shared exclusion constants
+_EXCLUDED_PACKAGES: set[str] = {"d3blobgen", "typing"}
+
+
+def _is_type_checking_block(node: ast.If) -> bool:
+    """Check if an if statement is ``if TYPE_CHECKING:``."""
+    return isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
+
+
+def _is_excluded_package(module_name: str) -> bool:
+    """Check if a module name matches any excluded package."""
+    return any(excluded in module_name for excluded in _EXCLUDED_PACKAGES)
+
+
+@functools.lru_cache(maxsize=None)
+def _get_module_ast(module: types.ModuleType) -> ast.Module | None:
+    """Return the parsed AST for *module*, cached by module identity."""
+    try:
+        return ast.parse(inspect.getsource(module))
+    except (OSError, TypeError):
+        return None
+
+
+def find_imports_for_function(func: Callable[..., Any]) -> list[PackageInfo]:
+    """Extract import statements used by a function from its source file.
+
+    Inspects the module containing *func*, parses all top-level imports, then
+    filters them down to only those whose imported names are actually referenced
+    inside the function body.
+
+    Args:
+        func: The callable to analyse.
+
+    Returns:
+        Sorted list of :class:`PackageInfo` objects representing the imports
+        used by *func*.
+
+    Filters applied:
+        - Excludes imports inside ``if TYPE_CHECKING:`` blocks
+        - Excludes imports from the ``d3blobgen`` package (client-side only)
+        - Excludes imports from the ``typing`` module (not supported in Python 2.7)
+        - Only includes imports whose names are actually used in the function body
+    """
+    # --- 1. Get the function's module source ---
+    module = inspect.getmodule(func)
+    if not module:
+        return []
+
+    module_tree = _get_module_ast(module)
+    if module_tree is None:
+        return []
+
+    # --- 2. Collect names used inside the function body ---
+    func_source = textwrap.dedent(inspect.getsource(func))
+    func_tree = ast.parse(func_source)
+    if not func_tree.body:
+        return []
+
+    func_node = func_tree.body[0]
+    if not isinstance(func_node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return []
+
+    used_names = _collect_used_names(func_node)
+
+    # --- 3. Parse file-level imports and filter to used ones ---
+    packages: list[PackageInfo] = []
+    for node in module_tree.body:
+        # Skip TYPE_CHECKING blocks
+        if isinstance(node, ast.If) and _is_type_checking_block(node):
+            continue
+
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if _is_excluded_package(alias.name):
+                    continue
+                # The name used in code is the alias if present, otherwise the module name
+                effective_name = alias.asname if alias.asname else alias.name
+                if effective_name in used_names:
+                    packages.append(
+                        PackageInfo(
+                            package=alias.name,
+                            alias=alias.asname,
+                        )
+                    )
+
+        elif isinstance(node, ast.ImportFrom):
+            if not node.module:
+                continue
+            if _is_excluded_package(node.module):
+                continue
+
+            # Filter to only methods actually used by the function
+            matched_methods: list[ImportAlias] = []
+            for alias in node.names:
+                effective_name = alias.asname if alias.asname else alias.name
+                if effective_name in used_names:
+                    matched_methods.append(
+                        ImportAlias(name=alias.name, asname=alias.asname)
+                    )
+
+            if matched_methods:
+                packages.append(
+                    PackageInfo(
+                        package=node.module,
+                        methods=matched_methods,
+                    )
+                )
+
+    # Sort by import statement string for deterministic output
+    return sorted(packages, key=lambda p: p.to_import_statement())

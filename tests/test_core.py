@@ -4,6 +4,7 @@ Copyright (c) 2025 Disguise Technologies ltd
 """
 
 import logging
+import warnings
 
 import pytest
 
@@ -11,6 +12,7 @@ from designer_plugin.d3sdk.function import (
     D3Function,
     D3PythonScript,
     FunctionInfo,
+    add_packages_in_current_file,
     d3function,
     d3pythonscript,
     extract_function_info,
@@ -465,3 +467,64 @@ class TestD3PythonScript:
 
         with pytest.raises(TypeError, match="multiple values for argument"):
             test_func.payload(1, a=2)
+
+
+class TestAutoPackageRegistration:
+    """Test that @d3function auto-registers imports used by the function."""
+
+    def test_extract_function_info_populates_packages(self):
+        """extract_function_info should populate the packages field."""
+        def func_using_logging():
+            return logging.getLogger("test")
+
+        info = extract_function_info(func_using_logging)
+        statements = [p.to_import_statement() for p in info.packages]
+        assert "import logging" in statements
+
+    def test_extract_function_info_packages_default_empty_for_no_imports(self):
+        """Function using no imports should have empty packages."""
+        def func_no_imports():
+            return 42
+
+        info = extract_function_info(func_no_imports)
+        assert info.packages == []
+
+    def test_d3function_auto_registers_packages(self):
+        """D3Function should auto-register packages without add_packages_in_current_file."""
+        module = "test_auto_pkg_module"
+        D3Function._available_d3functions[module].clear()
+        D3Function._available_packages[module].clear()
+
+        @d3function(module)
+        def func_using_logging():
+            return logging.getLogger("test")
+
+        # Packages should be auto-registered
+        assert "import logging" in D3Function._available_packages[module]
+
+    def test_d3function_register_payload_includes_auto_packages(self):
+        """get_register_payload should include auto-extracted imports."""
+        module = "test_auto_payload_module"
+        D3Function._available_d3functions[module].clear()
+        D3Function._available_packages[module].clear()
+
+        @d3function(module)
+        def func_using_logging():
+            return logging.getLogger("test")
+
+        payload = get_register_payload(module)
+        assert payload is not None
+        assert "import logging" in payload.contents
+
+
+class TestDeprecateAddPackages:
+    """Test that add_packages_in_current_file emits a deprecation warning."""
+
+    def test_deprecation_warning(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            add_packages_in_current_file("deprecated_test_module")
+
+            deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+            assert len(deprecation_warnings) == 1
+            assert "deprecated" in str(deprecation_warnings[0].message).lower()
