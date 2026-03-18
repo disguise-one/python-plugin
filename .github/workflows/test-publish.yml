@@ -1,0 +1,63 @@
+name: Publish to Test PyPI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write  # Required for trusted publishing
+
+jobs:
+  test-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.12'  # tomllib requires >= 3.11
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Append .dev suffix for unique Test PyPI versions
+      run: |
+        python -c "
+        import tomllib, pathlib, re
+        path = pathlib.Path('pyproject.toml')
+        text = path.read_text()
+        data = tomllib.loads(text)
+        version = data['project']['version']
+        dev_version = f'{version}.dev${{ github.run_number }}'
+        # Only replace the version inside the [project] section to avoid
+        # accidentally matching a version key in [tool.*] sections.
+        def replace_in_project_section(text, old_ver, new_ver):
+            project_match = re.search(r'^\[project\]', text, re.MULTILINE)
+            if not project_match:
+                raise RuntimeError('[project] section not found in pyproject.toml')
+            start = project_match.start()
+            # Find the next top-level section header or end of file
+            next_section = re.search(r'^\[(?!project[.\]])', text[start+1:], re.MULTILINE)
+            end = (start + 1 + next_section.start()) if next_section else len(text)
+            section = text[start:end]
+            section = re.sub(
+                r'(version\s*=\s*\")' + re.escape(old_ver) + r'\"',
+                r'\g<1>' + new_ver + '\"',
+                section, count=1,
+            )
+            return text[:start] + section + text[end:]
+        text = replace_in_project_section(text, version, dev_version)
+        path.write_text(text)
+        print(f'Version set to {dev_version}')
+        "
+
+    - name: Build package
+      run: uv build
+
+    - name: Publish to Test PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
