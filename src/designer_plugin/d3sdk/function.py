@@ -18,7 +18,6 @@ from designer_plugin.d3sdk.ast_utils import (
     PackageInfo,
     convert_function_to_py27,
     find_imports_for_function,
-    find_packages_in_current_file,
     validate_and_bind_signature,
     validate_and_extract_args,
 )
@@ -471,35 +470,6 @@ def d3function(module_name: str = "") -> Callable[[Callable[P, T]], D3Function[P
         return D3Function(module_name, func)
 
     return decorator
-
-
-def add_packages_in_current_file(module_name: str) -> None:
-    """Add all import statements from the caller's file to a d3function module's package list.
-
-    This function scans the calling file's import statements and registers them with
-    the specified module name, making those imports available when the module is
-    registered with Designer. This is useful for ensuring all dependencies are included
-    when deploying Python functions to Designer.
-
-    Args:
-        module_name: The name of the d3function module to associate the packages with.
-                    Must match the module_name used in @d3function decorator.
-
-    Example:
-        ```python
-        import numpy as np
-
-        @d3function("my_module")
-        def my_function():
-            return np.array([1, 2, 3])
-
-        # Register all imports in the file (numpy)
-        add_packages_in_current_file("my_module")
-        ```
-    """
-    # caller_stack is 2, 1 for this, 1 for caller of this function.
-    packages: list[str] = find_packages_in_current_file(2)
-    D3Function._available_packages[module_name].update(packages)
 
 
 def get_register_payload(module_name: str) -> RegisterPayload | None:

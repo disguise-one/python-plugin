@@ -4,7 +4,6 @@ Copyright (c) 2025 Disguise Technologies ltd
 """
 
 import logging
-import warnings
 
 import pytest
 
@@ -12,7 +11,6 @@ from designer_plugin.d3sdk.function import (
     D3Function,
     D3PythonScript,
     FunctionInfo,
-    add_packages_in_current_file,
     d3function,
     d3pythonscript,
     extract_function_info,
@@ -490,7 +488,7 @@ class TestAutoPackageRegistration:
         assert info.packages == []
 
     def test_d3function_auto_registers_packages(self):
-        """D3Function should auto-register packages without add_packages_in_current_file."""
+        """D3Function should auto-register packages."""
         module = "test_auto_pkg_module"
         D3Function._available_d3functions[module].clear()
         D3Function._available_packages[module].clear()
@@ -517,14 +515,3 @@ class TestAutoPackageRegistration:
         assert "import logging" in payload.contents
 
 
-class TestDeprecateAddPackages:
-    """Test that add_packages_in_current_file emits a deprecation warning."""
-
-    def test_deprecation_warning(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            add_packages_in_current_file("deprecated_test_module")
-
-            deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
-            assert len(deprecation_warnings) == 1
-            assert "deprecated" in str(deprecation_warnings[0].message).lower()

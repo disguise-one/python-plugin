@@ -19,7 +19,6 @@ from designer_plugin.d3sdk.ast_utils import (
     filter_base_classes,
     filter_init_args,
     find_imports_for_function,
-    find_packages_in_current_file,
     get_class_node,
     get_source,
 )
@@ -891,64 +890,6 @@ class TestFilterInitArgs:
         param_names = filter_init_args(class_node)
 
         assert param_names == []
-
-
-class TestFindPackagesInCurrentFile:
-    """Tests for find_packages_in_current_file function."""
-
-    def test_finds_imports_from_current_file(self):
-        """Test that the function finds import statements from the calling file."""
-        # This test file has imports at the top - they should be found
-        imports = find_packages_in_current_file()
-
-        # Should find at least some of our imports
-        assert isinstance(imports, list)
-        assert len(imports) > 0
-
-        # Should be sorted
-        assert imports == sorted(imports)
-
-        # Check for specific imports we know exist in this file
-        assert "import ast" in imports
-        assert "import pytest" in imports
-        assert "import textwrap" in imports
-
-    def test_excludes_typing_imports(self):
-        """Test that typing module imports are excluded."""
-        # Since this file doesn't import typing, we can't directly test exclusion here
-        # But we can verify the function doesn't crash and returns valid results
-        imports = find_packages_in_current_file()
-
-        # Verify no typing imports are present
-        typing_imports = [imp for imp in imports if "typing" in imp]
-        assert len(typing_imports) == 0
-
-    def test_excludes_d3blobgen_imports(self):
-        """Test that d3blobgen package imports are excluded."""
-        imports = find_packages_in_current_file()
-
-        # Verify no d3blobgen imports are present
-        d3blobgen_imports = [imp for imp in imports if "d3blobgen" in imp]
-        assert len(d3blobgen_imports) == 0
-
-    def test_excludes_find_packages_function_itself(self):
-        """Test that the function itself is excluded from imports."""
-        imports = find_packages_in_current_file()
-
-        # Should not include import of find_packages_in_current_file itself
-        # even though we import it at the top of this file
-        function_imports = [imp for imp in imports if "find_packages_in_current_file" in imp]
-        assert len(function_imports) == 0
-
-    def test_returns_unique_sorted_imports(self):
-        """Test that returned imports are unique and sorted."""
-        imports = find_packages_in_current_file()
-
-        # Check uniqueness
-        assert len(imports) == len(set(imports))
-
-        # Check sorting
-        assert imports == sorted(imports)
 
 
 class TestDecoratorHandling:
