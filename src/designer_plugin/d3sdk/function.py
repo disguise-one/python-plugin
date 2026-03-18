@@ -6,6 +6,7 @@ Copyright (c) 2025 Disguise Technologies ltd
 import ast
 import functools
 import inspect
+import logging
 import textwrap
 from collections import defaultdict
 from collections.abc import Callable
@@ -23,6 +24,8 @@ from designer_plugin.models import (
     PluginPayload,
     RegisterPayload,
 )
+
+logger = logging.getLogger(__name__)
 
 
 ###############################################################################
@@ -253,6 +256,16 @@ class D3Function(D3PythonScript[P, T]):
 
         super().__init__(func)
 
+        # Update the function in case the function was updated in same session.
+        # For example, jupyter notebook server can be running, but function signature can
+        # change constantly.
+        if self in D3Function._available_d3functions[module_name]:
+            logger.warning(
+                "Function '%s' in module '%s' is being replaced.",
+                self.name,
+                module_name,
+            )
+            D3Function._available_d3functions[module_name].discard(self)
         D3Function._available_d3functions[module_name].add(self)
 
     def __eq__(self, other: object) -> bool:
