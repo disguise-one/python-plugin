@@ -55,6 +55,7 @@ class PackageInfo(BaseModel):
 
     def to_import_statement(self) -> str:
         """Render back to a Python import statement using ast.unparse."""
+        node: ast.stmt
         if self.methods:
             node = ast.ImportFrom(
                 module=self.package,
@@ -445,7 +446,7 @@ def _collect_used_names(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> se
             names.add(node.id)
         elif isinstance(node, ast.Attribute):
             # Walk down the attribute chain to find the root name
-            root = node
+            root: ast.expr = node
             while isinstance(root, ast.Attribute):
                 root = root.value
             if isinstance(root, ast.Name):
