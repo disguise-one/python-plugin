@@ -109,6 +109,11 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [
     "-v",
+    "-m", "not integration",
     "--strict-markers",
     "--strict-config",
 ]
+markers = [
+    "integration: tests that require a running d3 instance",
+]
+

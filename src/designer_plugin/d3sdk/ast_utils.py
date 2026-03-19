@@ -13,6 +13,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from designer_plugin.d3sdk.builtin_modules import SUPPORTED_MODULES
+
 
 ###############################################################################
 # Package info models
@@ -22,7 +24,9 @@ class ImportAlias(BaseModel):
     Mirrors the structure of ast.alias for Pydantic compatibility.
     """
 
-    name: str = Field(description="The imported name (e.g., 'Path' in 'from pathlib import Path')")
+    name: str = Field(
+        description="The imported name (e.g., 'Path' in 'from pathlib import Path')"
+    )
     asname: str | None = Field(
         default=None,
         description="The alias (e.g., 'np' in 'import numpy as np')",
@@ -54,15 +58,11 @@ class PackageInfo(BaseModel):
         if self.methods:
             node = ast.ImportFrom(
                 module=self.package,
-                names=[
-                    ast.alias(name=m.name, asname=m.asname) for m in self.methods
-                ],
+                names=[ast.alias(name=m.name, asname=m.asname) for m in self.methods],
                 level=0,
             )
         else:
-            node = ast.Import(
-                names=[ast.alias(name=self.package, asname=self.alias)]
-            )
+            node = ast.Import(names=[ast.alias(name=self.package, asname=self.alias)])
         return ast.unparse(node)
 
 
@@ -453,21 +453,17 @@ def _collect_used_names(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> se
     return names
 
 
-# Shared exclusion constants
-_EXCLUDED_PACKAGES: set[str] = {"d3blobgen", "typing"}
-
-
 def _is_type_checking_block(node: ast.If) -> bool:
     """Check if an if statement is ``if TYPE_CHECKING:``."""
     return isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
 
 
-def _is_excluded_package(module_name: str) -> bool:
-    """Check if a module name matches any excluded package."""
-    return any(excluded in module_name for excluded in _EXCLUDED_PACKAGES)
+def _is_builtin_package(module_name: str) -> bool:
+    """Check if a module name matches python builtin package."""
+    return module_name in SUPPORTED_MODULES
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _get_module_ast(module: types.ModuleType) -> ast.Module | None:
     """Return the parsed AST for *module*, cached by module identity."""
     try:
@@ -526,8 +522,9 @@ def find_imports_for_function(func: Callable[..., Any]) -> list[PackageInfo]:
 
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if _is_excluded_package(alias.name):
+                if not _is_builtin_package(alias.name):
                     continue
+
                 # The name used in code is the alias if present, otherwise the module name
                 effective_name = alias.asname if alias.asname else alias.name
                 if effective_name in used_names:
@@ -541,7 +538,7 @@ def find_imports_for_function(func: Callable[..., Any]) -> list[PackageInfo]:
         elif isinstance(node, ast.ImportFrom):
             if not node.module:
                 continue
-            if _is_excluded_package(node.module):
+            if not _is_builtin_package(node.module):
                 continue
 
             # Filter to only methods actually used by the function
