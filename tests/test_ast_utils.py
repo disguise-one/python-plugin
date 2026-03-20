@@ -5,6 +5,7 @@ Copyright (c) 2025 Disguise Technologies ltd
 
 import ast
 import inspect
+import logging.handlers
 import textwrap
 import types
 from os.path import join as path_join
@@ -1207,6 +1208,16 @@ class TestFindImportsForFunction:
         dummy.__module__ = "_nonexistent_module_for_test"
         packages = find_imports_for_function(dummy)
         assert packages == []
+
+    def test_dotted_import_effective_name(self):
+        """import logging.handlers binds 'logging' — should match usage of logging.handlers."""
+
+        def uses_logging_handlers():
+            return logging.handlers.RotatingFileHandler("/tmp/x")
+
+        packages = find_imports_for_function(uses_logging_handlers)
+        statements = [p.to_import_statement() for p in packages]
+        assert "import logging.handlers" in statements
 
 
 if __name__ == "__main__":

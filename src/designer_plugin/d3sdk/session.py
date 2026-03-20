@@ -35,7 +35,7 @@ class D3SessionBase:
         Args:
             hostname: The hostname of the Designer instance.
             port: The port number of the Designer instance.
-            context_modules: List of module names to register when entering session context.
+            context_modules: Set of module names to register when entering session context.
         """
         self.hostname: str = hostname
         self.port: int = port

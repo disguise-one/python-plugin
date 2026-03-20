@@ -459,7 +459,16 @@ def _collect_used_names(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> se
 
 def _is_type_checking_block(node: ast.If) -> bool:
     """Check if an if statement is ``if TYPE_CHECKING:``."""
-    return isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
+    if isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING":
+        return True
+    # Also match `if typing.TYPE_CHECKING:`
+    if isinstance(node.test, ast.Attribute):
+        return (
+            node.test.attr == "TYPE_CHECKING"
+            and isinstance(node.test.value, ast.Name)
+            and node.test.value.id == "typing"
+        )
+    return False
 
 
 def _is_supported_module(module_name: str) -> bool:
@@ -535,8 +544,12 @@ def find_imports_for_function(func: Callable[..., Any]) -> list[PackageInfo]:
                 if not _is_supported_module(alias.name):
                     continue
 
-                # The name used in code is the alias if present, otherwise the module name
-                effective_name = alias.asname if alias.asname else alias.name
+                # The name used in code is the alias if present, otherwise the top-level
+                # package name (e.g. "import logging.handlers" binds "logging", not
+                # "logging.handlers").
+                effective_name = (
+                    alias.asname if alias.asname else alias.name.split(".")[0]
+                )
                 if effective_name in used_names:
                     packages.append(
                         PackageInfo(

@@ -263,15 +263,11 @@ class D3Function(D3PythonScript[P, T]):
 
         super().__init__(func)
 
-        # Auto-register packages used by this function
-        D3Function._available_packages[module_name].update(
-            pkg.to_import_statement() for pkg in self._function_info.packages
-        )
-
         # Update the function in case the function was updated in the same session.
         # For example, jupyter notebook server can be running, but function signature can
         # change constantly.
-        if self in D3Function._available_d3functions[module_name]:
+        is_replacement = self in D3Function._available_d3functions[module_name]
+        if is_replacement:
             logger.debug(
                 "Function '%s' in module '%s' is being replaced.",
                 self.name,
@@ -279,6 +275,19 @@ class D3Function(D3PythonScript[P, T]):
             )
             D3Function._available_d3functions[module_name].discard(self)
         D3Function._available_d3functions[module_name].add(self)
+
+        if is_replacement:
+            # Full rebuild needed to evict stale imports from the replaced function.
+            D3Function._available_packages[module_name] = {
+                pkg.to_import_statement()
+                for f in D3Function._available_d3functions[module_name]
+                for pkg in f._function_info.packages
+            }
+        else:
+            # New function: incrementally add its packages. No stale imports to remove.
+            D3Function._available_packages[module_name].update(
+                pkg.to_import_statement() for pkg in self._function_info.packages
+            )
 
     def __eq__(self, other: object) -> bool:
         """Check equality based on function name for unique registration.
