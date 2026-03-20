@@ -7,6 +7,7 @@ import ast
 import inspect
 import textwrap
 import types
+from os.path import join as path_join
 
 import pytest
 
@@ -1185,6 +1186,27 @@ class TestFindImportsForFunction:
         statements = [p.to_import_statement() for p in packages]
         typing_imports = [s for s in statements if "typing" in s]
         assert len(typing_imports) == 0
+
+    def test_finds_submodule_import(self):
+        """from os.path import join (sub-module) should be detected."""
+
+        def uses_path_join():
+            return path_join("a", "b")
+
+        packages = find_imports_for_function(uses_path_join)
+        statements = [p.to_import_statement() for p in packages]
+        assert "from os.path import join as path_join" in statements
+
+    def test_no_source_module_returns_empty(self):
+        """Function whose module source is unavailable should return empty list."""
+        # Simulate a function from an unsourceable module (like Jupyter __main__)
+        def dummy():
+            return 1
+
+        # Patch __module__ to a non-existent module
+        dummy.__module__ = "_nonexistent_module_for_test"
+        packages = find_imports_for_function(dummy)
+        assert packages == []
 
 
 if __name__ == "__main__":

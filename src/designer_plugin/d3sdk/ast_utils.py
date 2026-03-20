@@ -6,6 +6,7 @@ Copyright (c) 2025 Disguise Technologies ltd
 import ast
 import functools
 import inspect
+import logging
 import textwrap
 import types
 from collections.abc import Callable
@@ -14,6 +15,8 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from designer_plugin.d3sdk.builtin_modules import SUPPORTED_MODULES
+
+logger = logging.getLogger(__name__)
 
 
 ###############################################################################
@@ -49,7 +52,7 @@ class PackageInfo(BaseModel):
         description="Alias for the package (e.g., 'np' in 'import numpy as np')",
     )
     methods: list[ImportAlias] = Field(
-        default=[],
+        default_factory=list,
         description="Imported names for 'from X import ...' style imports",
     )
 
@@ -459,9 +462,10 @@ def _is_type_checking_block(node: ast.If) -> bool:
     return isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
 
 
-def _is_builtin_package(module_name: str) -> bool:
-    """Check if a module name matches python builtin package."""
-    return module_name in SUPPORTED_MODULES
+def _is_supported_module(module_name: str) -> bool:
+    """Check if a module (or its top-level parent) is Designer-supported."""
+    top_level = module_name.split(".")[0]
+    return top_level in SUPPORTED_MODULES
 
 
 @functools.cache
@@ -489,8 +493,8 @@ def find_imports_for_function(func: Callable[..., Any]) -> list[PackageInfo]:
 
     Filters applied:
         - Excludes imports inside ``if TYPE_CHECKING:`` blocks
-        - Excludes imports from the ``d3blobgen`` package (client-side only)
-        - Excludes imports from the ``typing`` module (not supported in Python 2.7)
+        - Only includes imports from Designer-supported builtin modules
+          (see ``SUPPORTED_MODULES`` in ``builtin_modules.py``)
         - Only includes imports whose names are actually used in the function body
     """
     # --- 1. Get the function's module source ---
@@ -500,6 +504,11 @@ def find_imports_for_function(func: Callable[..., Any]) -> list[PackageInfo]:
 
     module_tree = _get_module_ast(module)
     if module_tree is None:
+        logger.warning(
+            "Cannot detect file-level imports for '%s': module source unavailable "
+            "(e.g. Jupyter notebook). Place imports inside the function body instead.",
+            func.__qualname__,
+        )
         return []
 
     # --- 2. Collect names used inside the function body ---
@@ -523,7 +532,7 @@ def find_imports_for_function(func: Callable[..., Any]) -> list[PackageInfo]:
 
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if not _is_builtin_package(alias.name):
+                if not _is_supported_module(alias.name):
                     continue
 
                 # The name used in code is the alias if present, otherwise the module name
@@ -539,7 +548,7 @@ def find_imports_for_function(func: Callable[..., Any]) -> list[PackageInfo]:
         elif isinstance(node, ast.ImportFrom):
             if not node.module:
                 continue
-            if not _is_builtin_package(node.module):
+            if not _is_supported_module(node.module):
                 continue
 
             # Filter to only methods actually used by the function

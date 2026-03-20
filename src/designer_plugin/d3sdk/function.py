@@ -323,7 +323,7 @@ class D3Function(D3PythonScript[P, T]):
             return None
 
         contents_packages: str = "\n".join(
-            list(D3Function._available_packages[module_name])
+            sorted(D3Function._available_packages[module_name])
         )
         contents_functions: str = "\n\n".join(
             [
