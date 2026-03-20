@@ -10,12 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Lazy module registration**: `D3Session.execute()` and `D3AsyncSession.execute()` now automatically register a `@d3function` module on first use, eliminating the need to declare all modules in `context_modules` upfront.
 - `registered_modules` tracking on session instances prevents duplicate registration calls.
+- **Jupyter notebook support**: `@d3function` now automatically replaces a previously registered function when the same name is re-registered in the same module, with a warning log. This enables iterative workflows in Jupyter notebooks where cells are re-executed.
 
 ### Changed
 - `d3_api_plugin` has been renamed to `d3_api_execute`.
 - `d3_api_aplugin` has been renamed to `d3_api_aexecute`.
 - `context_modules` parameter type updated from `list[str]` to `set[str]` on `D3Session`, `D3AsyncSession`, and `D3SessionBase`.
 - Updated documentation to reflect `pystub` proxy support.
+- Bumped `actions/checkout` to v6 and `astral-sh/setup-uv` to v7 in CI.
+- Added Test PyPI publish workflow (`test-publish.yml`) for dev version releases.
 
 ## [1.2.0] - 2025-12-02
 

@@ -61,7 +61,7 @@ class D3Session(D3SessionBase):
         Args:
             hostname: The hostname of the Designer instance.
             port: The port number of the Designer instance.
-            context_modules: Optional list of module names to register when entering session context.
+            context_modules: Optional set of module names to register when entering session context.
         """
         super().__init__(hostname, port, context_modules or set())
 
@@ -198,7 +198,7 @@ class D3AsyncSession(D3SessionBase):
         Args:
             hostname: The hostname of the Designer instance.
             port: The port number of the Designer instance.
-            context_modules: Optional list of module names to register when entering session context.
+            context_modules: Optional set of module names to register when entering session context.
         """
         super().__init__(hostname, port, context_modules or set())
 

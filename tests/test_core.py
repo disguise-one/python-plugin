@@ -3,6 +3,8 @@ MIT License
 Copyright (c) 2025 Disguise Technologies ltd
 """
 
+import logging
+
 import pytest
 
 from designer_plugin.d3sdk.function import (
@@ -327,6 +329,61 @@ class TestD3FunctionEquality:
         # Should not be equal because they wrap different functions
         assert func1 != func2
 
+
+
+class TestD3FunctionReplacement:
+    """Test that re-registering a D3Function with the same name replaces the old one."""
+
+    def test_reregister_replaces_function(self):
+        """Re-registering a function with the same name should replace it in the set."""
+        module = "test_replace_module"
+        D3Function._available_d3functions[module].clear()
+
+        @d3function(module)
+        def my_func(a: int) -> int:
+            return a
+
+        @d3function(module)
+        def my_func(a: int, b: int) -> int:  # noqa: F811
+            return a + b
+
+        funcs = D3Function._available_d3functions[module]
+        matching = [f for f in funcs if f.name == "my_func"]
+        assert len(matching) == 1
+        assert matching[0].function_info.args == ["a", "b"]
+
+    def test_reregister_logs_debug(self, caplog):
+        """Re-registering should log a debug message."""
+        module = "test_replace_warn_module"
+        D3Function._available_d3functions[module].clear()
+
+        @d3function(module)
+        def warn_func() -> None:
+            pass
+
+        with caplog.at_level(logging.DEBUG, logger="designer_plugin.d3sdk.function"):
+            @d3function(module)
+            def warn_func() -> int:  # noqa: F811
+                return 1
+
+        assert any("warn_func" in msg and "being replaced" in msg for msg in caplog.messages)
+
+    def test_set_size_unchanged_after_replacement(self):
+        """The function set size should stay the same after replacement."""
+        module = "test_replace_size_module"
+        D3Function._available_d3functions[module].clear()
+
+        @d3function(module)
+        def size_func(x: int) -> int:
+            return x
+
+        assert len(D3Function._available_d3functions[module]) == 1
+
+        @d3function(module)
+        def size_func(x: int, y: int) -> int:  # noqa: F811
+            return x + y
+
+        assert len(D3Function._available_d3functions[module]) == 1
 
 
 class TestD3PythonScript:
