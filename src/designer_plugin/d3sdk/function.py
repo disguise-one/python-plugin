@@ -256,11 +256,11 @@ class D3Function(D3PythonScript[P, T]):
 
         super().__init__(func)
 
-        # Update the function in case the function was updated in same session.
+        # Update the function in case the function was updated in the same session.
         # For example, jupyter notebook server can be running, but function signature can
         # change constantly.
         if self in D3Function._available_d3functions[module_name]:
-            logger.warning(
+            logger.debug(
                 "Function '%s' in module '%s' is being replaced.",
                 self.name,
                 module_name,

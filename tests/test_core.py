@@ -352,8 +352,8 @@ class TestD3FunctionReplacement:
         assert len(matching) == 1
         assert matching[0].function_info.args == ["a", "b"]
 
-    def test_reregister_logs_warning(self, caplog):
-        """Re-registering should log a warning."""
+    def test_reregister_logs_debug(self, caplog):
+        """Re-registering should log a debug message."""
         module = "test_replace_warn_module"
         D3Function._available_d3functions[module].clear()
 
@@ -361,7 +361,7 @@ class TestD3FunctionReplacement:
         def warn_func() -> None:
             pass
 
-        with caplog.at_level(logging.WARNING, logger="designer_plugin.d3sdk.function"):
+        with caplog.at_level(logging.DEBUG, logger="designer_plugin.d3sdk.function"):
             @d3function(module)
             def warn_func() -> int:  # noqa: F811
                 return 1
