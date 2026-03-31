@@ -15,8 +15,9 @@ from typing import Any, Generic, ParamSpec, TypeVar
 from pydantic import BaseModel, Field
 
 from designer_plugin.d3sdk.ast_utils import (
+    PackageInfo,
     convert_function_to_py27,
-    find_packages_in_current_file,
+    find_imports_for_function,
     validate_and_bind_signature,
     validate_and_extract_args,
 )
@@ -50,6 +51,9 @@ class FunctionInfo(BaseModel):
     )
     args: list[str] = Field(
         default=[], description="list of arguments from extracted function"
+    )
+    packages: list[PackageInfo] = Field(
+        default=[], description="list of packages/imports used by the function"
     )
 
 
@@ -114,6 +118,8 @@ def extract_function_info(func: Callable[..., Any]) -> FunctionInfo:
     for stmt in body_nodes_py27:
         body_py27 += ast.unparse(stmt) + "\n"
 
+    packages = find_imports_for_function(func)
+
     return FunctionInfo(
         source_code=source_code_py3,
         source_code_py27=source_code_py27,
@@ -121,6 +127,7 @@ def extract_function_info(func: Callable[..., Any]) -> FunctionInfo:
         body=body.strip(),
         body_py27=body_py27.strip(),
         args=args,
+        packages=packages,
     )
 
 
@@ -259,7 +266,8 @@ class D3Function(D3PythonScript[P, T]):
         # Update the function in case the function was updated in the same session.
         # For example, jupyter notebook server can be running, but function signature can
         # change constantly.
-        if self in D3Function._available_d3functions[module_name]:
+        is_replacement = self in D3Function._available_d3functions[module_name]
+        if is_replacement:
             logger.debug(
                 "Function '%s' in module '%s' is being replaced.",
                 self.name,
@@ -267,6 +275,19 @@ class D3Function(D3PythonScript[P, T]):
             )
             D3Function._available_d3functions[module_name].discard(self)
         D3Function._available_d3functions[module_name].add(self)
+
+        if is_replacement:
+            # Full rebuild needed to evict stale imports from the replaced function.
+            D3Function._available_packages[module_name] = {
+                pkg.to_import_statement()
+                for f in D3Function._available_d3functions[module_name]
+                for pkg in f._function_info.packages
+            }
+        else:
+            # New function: incrementally add its packages. No stale imports to remove.
+            D3Function._available_packages[module_name].update(
+                pkg.to_import_statement() for pkg in self._function_info.packages
+            )
 
     def __eq__(self, other: object) -> bool:
         """Check equality based on function name for unique registration.
@@ -311,7 +332,7 @@ class D3Function(D3PythonScript[P, T]):
             return None
 
         contents_packages: str = "\n".join(
-            list(D3Function._available_packages[module_name])
+            sorted(D3Function._available_packages[module_name])
         )
         contents_functions: str = "\n\n".join(
             [
@@ -458,35 +479,6 @@ def d3function(module_name: str = "") -> Callable[[Callable[P, T]], D3Function[P
         return D3Function(module_name, func)
 
     return decorator
-
-
-def add_packages_in_current_file(module_name: str) -> None:
-    """Add all import statements from the caller's file to a d3function module's package list.
-
-    This function scans the calling file's import statements and registers them with
-    the specified module name, making those imports available when the module is
-    registered with Designer. This is useful for ensuring all dependencies are included
-    when deploying Python functions to Designer.
-
-    Args:
-        module_name: The name of the d3function module to associate the packages with.
-                    Must match the module_name used in @d3function decorator.
-
-    Example:
-        ```python
-        import numpy as np
-
-        @d3function("my_module")
-        def my_function():
-            return np.array([1, 2, 3])
-
-        # Register all imports in the file (numpy)
-        add_packages_in_current_file("my_module")
-        ```
-    """
-    # caller_stack is 2, 1 for this, 1 for caller of this function.
-    packages: list[str] = find_packages_in_current_file(2)
-    D3Function._available_packages[module_name].update(packages)
 
 
 def get_register_payload(module_name: str) -> RegisterPayload | None:

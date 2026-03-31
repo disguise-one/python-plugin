@@ -169,6 +169,14 @@ The Functional API offers two decorators: `@d3pythonscript` and `@d3function`:
   - Functions decorated with the same `module_name` are grouped together and can call each other, enabling function chaining and code reuse.
   - Registration happens automatically on the first call to `execute()` or `rpc()` that references the module — no need to declare modules upfront. You can also pre-register specific modules by passing them to the session context manager (e.g., `D3AsyncSession('localhost', 80, {"mymodule"})`).
 
+> **Jupyter Notebook:** File-level imports (e.g., `import numpy as np` in a separate cell) cannot be automatically detected. In Jupyter, place any required imports inside the function body itself:
+> ```python
+> @d3function("mymodule")
+> def my_fn():
+>     import numpy as np
+>     return np.array([1, 2])
+> ```
+
 ### Session API Methods
 
 Both `D3AsyncSession` and `D3Session` provide two methods for executing functions:

@@ -85,7 +85,7 @@ def create_d3_plugin_method_wrapper(
     2. Serializes the arguments using repr()
     3. Builds a script string in the form: "return plugin.{method_name}({args})"
     4. Creates a PluginPayload with the script and module information
-    5. Sends it to Designer via d3_api_plugin or d3_api_aplugin
+    5. Sends it to Designer via d3_api_execute or d3_api_aexecute
     6. Returns the result from the remote execution
 
     Args:

@@ -31,14 +31,19 @@ Thank you for your interest in contributing to designer-plugin! This document pr
 
 ### Running Tests
 
-Run the full test suite:
+Run unit tests (default):
 ```bash
 uv run pytest
 ```
 
-Run tests with verbose output:
+Run integration tests (requires a running d3 instance):
 ```bash
-uv run pytest -v
+uv run pytest -m integration
+```
+
+Run all tests:
+```bash
+uv run pytest -m ""
 ```
 
 Run specific test file:

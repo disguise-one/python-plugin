@@ -5,18 +5,22 @@ Copyright (c) 2025 Disguise Technologies ltd
 
 import ast
 import inspect
+import logging.handlers
 import textwrap
 import types
+from os.path import join as path_join
 
 import pytest
 
 from designer_plugin.d3sdk.ast_utils import (
     ConvertToPython27,
+    ImportAlias,
+    PackageInfo,
     convert_class_to_py27,
     convert_function_to_py27,
     filter_base_classes,
     filter_init_args,
-    find_packages_in_current_file,
+    find_imports_for_function,
     get_class_node,
     get_source,
 )
@@ -890,64 +894,6 @@ class TestFilterInitArgs:
         assert param_names == []
 
 
-class TestFindPackagesInCurrentFile:
-    """Tests for find_packages_in_current_file function."""
-
-    def test_finds_imports_from_current_file(self):
-        """Test that the function finds import statements from the calling file."""
-        # This test file has imports at the top - they should be found
-        imports = find_packages_in_current_file()
-
-        # Should find at least some of our imports
-        assert isinstance(imports, list)
-        assert len(imports) > 0
-
-        # Should be sorted
-        assert imports == sorted(imports)
-
-        # Check for specific imports we know exist in this file
-        assert "import ast" in imports
-        assert "import pytest" in imports
-        assert "import textwrap" in imports
-
-    def test_excludes_typing_imports(self):
-        """Test that typing module imports are excluded."""
-        # Since this file doesn't import typing, we can't directly test exclusion here
-        # But we can verify the function doesn't crash and returns valid results
-        imports = find_packages_in_current_file()
-
-        # Verify no typing imports are present
-        typing_imports = [imp for imp in imports if "typing" in imp]
-        assert len(typing_imports) == 0
-
-    def test_excludes_d3blobgen_imports(self):
-        """Test that d3blobgen package imports are excluded."""
-        imports = find_packages_in_current_file()
-
-        # Verify no d3blobgen imports are present
-        d3blobgen_imports = [imp for imp in imports if "d3blobgen" in imp]
-        assert len(d3blobgen_imports) == 0
-
-    def test_excludes_find_packages_function_itself(self):
-        """Test that the function itself is excluded from imports."""
-        imports = find_packages_in_current_file()
-
-        # Should not include import of find_packages_in_current_file itself
-        # even though we import it at the top of this file
-        function_imports = [imp for imp in imports if "find_packages_in_current_file" in imp]
-        assert len(function_imports) == 0
-
-    def test_returns_unique_sorted_imports(self):
-        """Test that returned imports are unique and sorted."""
-        imports = find_packages_in_current_file()
-
-        # Check uniqueness
-        assert len(imports) == len(set(imports))
-
-        # Check sorting
-        assert imports == sorted(imports)
-
-
 class TestDecoratorHandling:
     """Tests for handling decorators in AST transformations."""
 
@@ -1125,6 +1071,153 @@ class TestEdgeCases:
         func = transformed.body[0]
         assert isinstance(func, ast.FunctionDef)
         assert len(func.body) == 3  # Two assignments and one return
+
+
+class TestPackageInfo:
+    """Tests for PackageInfo and ImportAlias models."""
+
+    def test_import_package_only(self):
+        """import numpy"""
+        pkg = PackageInfo(package="numpy")
+        assert pkg.to_import_statement() == "import numpy"
+
+    def test_import_package_with_alias(self):
+        """import numpy as np"""
+        pkg = PackageInfo(package="numpy", alias="np")
+        assert pkg.to_import_statement() == "import numpy as np"
+
+    def test_from_import_single_method(self):
+        """from pathlib import Path"""
+        pkg = PackageInfo(
+            package="pathlib",
+            methods=[ImportAlias(name="Path")],
+        )
+        assert pkg.to_import_statement() == "from pathlib import Path"
+
+    def test_from_import_multiple_methods(self):
+        """from os.path import join, exists"""
+        pkg = PackageInfo(
+            package="os.path",
+            methods=[
+                ImportAlias(name="join"),
+                ImportAlias(name="exists"),
+            ],
+        )
+        assert pkg.to_import_statement() == "from os.path import join, exists"
+
+    def test_from_import_method_with_alias(self):
+        """from collections import defaultdict as dd"""
+        pkg = PackageInfo(
+            package="collections",
+            methods=[ImportAlias(name="defaultdict", asname="dd")],
+        )
+        assert pkg.to_import_statement() == "from collections import defaultdict as dd"
+
+    def test_from_import_mixed_aliases(self):
+        """from collections import OrderedDict, defaultdict as dd"""
+        pkg = PackageInfo(
+            package="collections",
+            methods=[
+                ImportAlias(name="OrderedDict"),
+                ImportAlias(name="defaultdict", asname="dd"),
+            ],
+        )
+        result = pkg.to_import_statement()
+        assert result == "from collections import OrderedDict, defaultdict as dd"
+
+
+class TestFindImportsForFunction:
+    """Tests for find_imports_for_function."""
+
+    def test_finds_used_import(self):
+        """Function using ast should get 'import ast' extracted."""
+        # This function uses ast.parse which is from 'import ast' at file top
+        def uses_ast():
+            return ast.parse("x = 1")
+
+        packages = find_imports_for_function(uses_ast)
+        statements = [p.to_import_statement() for p in packages]
+        assert "import ast" in statements
+
+    def test_excludes_unused_import(self):
+        """Function not using a module should not include it."""
+        def uses_nothing():
+            return 42
+
+        packages = find_imports_for_function(uses_nothing)
+        statements = [p.to_import_statement() for p in packages]
+        # Should not include ast, textwrap, etc. since they're not used
+        assert "import types" not in statements
+
+    def test_finds_from_import(self):
+        """Function using a 'from X import Y' name should include it."""
+        def uses_textwrap():
+            return textwrap.dedent("  hello")
+
+        packages = find_imports_for_function(uses_textwrap)
+        statements = [p.to_import_statement() for p in packages]
+        assert "import textwrap" in statements
+
+    def test_returns_package_info_objects(self):
+        """Return type should be list of PackageInfo."""
+        def simple_func():
+            return ast.dump(ast.parse("1"))
+
+        packages = find_imports_for_function(simple_func)
+        assert all(isinstance(p, PackageInfo) for p in packages)
+
+    def test_sorted_output(self):
+        """Output should be sorted by import statement."""
+        def uses_multiple():
+            _ = textwrap.dedent("x")
+            _ = ast.parse("y")
+            return inspect.getsource(uses_multiple)
+
+        packages = find_imports_for_function(uses_multiple)
+        statements = [p.to_import_statement() for p in packages]
+        assert statements == sorted(statements)
+
+    def test_excludes_typing_imports(self):
+        """Typing imports should be excluded."""
+        # The 'Any' import from typing at the file top should never appear
+        def uses_nothing():
+            return 1
+
+        packages = find_imports_for_function(uses_nothing)
+        statements = [p.to_import_statement() for p in packages]
+        typing_imports = [s for s in statements if "typing" in s]
+        assert len(typing_imports) == 0
+
+    def test_finds_submodule_import(self):
+        """from os.path import join (sub-module) should be detected."""
+
+        def uses_path_join():
+            return path_join("a", "b")
+
+        packages = find_imports_for_function(uses_path_join)
+        statements = [p.to_import_statement() for p in packages]
+        assert "from os.path import join as path_join" in statements
+
+    def test_no_source_module_returns_empty(self):
+        """Function whose module source is unavailable should return empty list."""
+        # Simulate a function from an unsourceable module (like Jupyter __main__)
+        def dummy():
+            return 1
+
+        # Patch __module__ to a non-existent module
+        dummy.__module__ = "_nonexistent_module_for_test"
+        packages = find_imports_for_function(dummy)
+        assert packages == []
+
+    def test_dotted_import_effective_name(self):
+        """import logging.handlers binds 'logging' — should match usage of logging.handlers."""
+
+        def uses_logging_handlers():
+            return logging.handlers.RotatingFileHandler("/tmp/x")
+
+        packages = find_imports_for_function(uses_logging_handlers)
+        statements = [p.to_import_statement() for p in packages]
+        assert "import logging.handlers" in statements
 
 
 if __name__ == "__main__":

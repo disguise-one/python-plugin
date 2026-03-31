@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Lazy module registration**: `D3Session.execute()` and `D3AsyncSession.execute()` now automatically register a `@d3function` module on first use, eliminating the need to declare all modules in `context_modules` upfront.
 - `registered_modules` tracking on session instances prevents duplicate registration calls.
 - **Jupyter notebook support**: `@d3function` now automatically replaces a previously registered function when the same name is re-registered in the same module, with a warning log. This enables iterative workflows in Jupyter notebooks where cells are re-executed.
+- **Automatic import detection**: `@d3function` now automatically discovers file-level imports used by the decorated function and includes them in the registered module. In Jupyter notebooks, place imports inside the function body instead.
+
+### Removed
+- `add_packages_in_current_file()`: Removed. Imports are now detected automatically by `@d3function`.
+- `find_packages_in_current_file()`: Removed. Replaced by `find_imports_for_function()`.
 
 ### Changed
 - `d3_api_plugin` has been renamed to `d3_api_execute`.
