@@ -477,7 +477,7 @@ def _is_supported_module(module_name: str) -> bool:
     return top_level in SUPPORTED_MODULES
 
 
-@functools.cache
+@functools.lru_cache(maxsize=128)
 def _get_module_ast(module: types.ModuleType) -> ast.Module | None:
     """Return the parsed AST for *module*, cached by module identity."""
     try:
