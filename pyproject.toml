@@ -7,8 +7,8 @@ name = "designer-plugin"
 version = "1.3.0"
 description = "Python library for creating Disguise Designer plugins with DNS-SD discovery and remote Python execution"
 authors = [
-    { name = "Tom Whittock", email = "tom.whittock@disguise.one" },
-    { name = "Taegyun Ha", email = "taegyun.ha@disguise.one" }
+    { name = "Taegyun Ha", email = "taegyun.ha@disguise.one" },
+    { name = "Tom Whittock", email = "tom.whittock@disguise.one" }
 ]
 dependencies = [
     "aiohttp>=3.13.2",
