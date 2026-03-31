@@ -8,7 +8,11 @@ permissions:
   id-token: write
 
 jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   publish:
+    needs: ci
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     environment: pypi
@@ -36,15 +40,22 @@ jobs:
             exit 1
           fi
 
+      - name: Validate tag does not exist
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "Tag v${{ steps.version.outputs.version }} already exists. Aborting."
+            exit 1
+          fi
+
       - name: Build package
         run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Tag release
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "v${{ steps.version.outputs.version }}" || echo "Tag already exists, skipping"
-          git push origin "v${{ steps.version.outputs.version }}" || echo "Tag already pushed, skipping"
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
