@@ -83,11 +83,11 @@ To enable IDE autocomplete and type checking for Designer's Python API, install 
 pip install designer-plugin-pystub
 ```
 
-Once installed, import the stubs using the `TYPE_CHECKING` pattern. This provides type hints in your IDE without affecting runtime execution:
+Once installed, import the stubs.
+> **Important:** `pystub` provides type hints for Designer's API objects but not their implementations. These objects only exist in Designer's runtime and cannot be used in local Python code. They must only be referenced in code that will be executed remotely in Designer.
+
 ```python
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from designer_plugin.pystub.d3 import *
+from designer_plugin.pystub import *
 ```
 
 This allows you to get autocomplete for Designer objects like `resourceManager`, `Screen2`, `Path`, etc., while writing your plugin code.
@@ -100,9 +100,7 @@ The Client API allows you to define a class with methods that execute remotely o
 
 ```python
 from designer_plugin.d3sdk import D3PluginClient
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from designer_plugin.pystub.d3 import *
+from designer_plugin.pystub import *
 
 # 1. Sync example -----------------------------------
 class MySyncPlugin(D3PluginClient):
@@ -169,7 +167,15 @@ The Functional API offers two decorators: `@d3pythonscript` and `@d3function`:
 - **`@d3function`**:
   - Must be registered on Designer before execution.
   - Functions decorated with the same `module_name` are grouped together and can call each other, enabling function chaining and code reuse.
-  - Registration is automatic when you pass module names to the session context manager (e.g., `D3AsyncSession('localhost', 80, ["mymodule"])`). If you don't provide module names, no registration occurs.
+  - Registration happens automatically on the first call to `execute()` or `rpc()` that references the module — no need to declare modules upfront. You can also pre-register specific modules by passing them to the session context manager (e.g., `D3AsyncSession('localhost', 80, {"mymodule"})`).
+
+> **Jupyter Notebook:** File-level imports (e.g., `import numpy as np` in a separate cell) cannot be automatically detected. In Jupyter, place any required imports inside the function body itself:
+> ```python
+> @d3function("mymodule")
+> def my_fn():
+>     import numpy as np
+>     return np.array([1, 2])
+> ```
 
 ### Session API Methods
 
@@ -186,9 +192,7 @@ Both `D3AsyncSession` and `D3Session` provide two methods for executing function
 
 ```python
 from designer_plugin.d3sdk import d3pythonscript, d3function, D3AsyncSession
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from designer_plugin.pystub.d3 import *
+from designer_plugin.pystub import *
 
 # 1. @d3pythonscript - simple one-off execution
 @d3pythonscript
@@ -213,11 +217,11 @@ def my_time() -> str:
     return str(datetime.datetime.now())
 
 # Usage with async session
-async with D3AsyncSession('localhost', 80, ["mymodule"]) as session:
+async with D3AsyncSession('localhost', 80) as session:
     # d3pythonscript: no registration needed
     await session.rpc(rename_surface.payload("surface 1", "surface 2"))
 
-    # d3function: registered automatically via context manager
+    # d3function: module is registered automatically on first call
     time: str = await session.rpc(
         rename_surface_get_time.payload("surface 1", "surface 2"))
 
@@ -230,7 +234,7 @@ async with D3AsyncSession('localhost', 80, ["mymodule"]) as session:
 
 # Sync usage
 from designer_plugin.d3sdk import D3Session
-with D3Session('localhost', 80, ["mymodule"]) as session:
+with D3Session('localhost', 80) as session:
     session.rpc(rename_surface.payload("surface 1", "surface 2"))
 ```
 
@@ -251,4 +255,3 @@ logging.getLogger('designer_plugin').setLevel(logging.DEBUG)
 # License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-

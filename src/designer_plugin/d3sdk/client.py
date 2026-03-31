@@ -13,9 +13,9 @@ from contextlib import asynccontextmanager, contextmanager
 from typing import Any, ParamSpec, TypeVar
 
 from designer_plugin.api import (
-    d3_api_aplugin,
+    d3_api_aexecute,
     d3_api_aregister_module,
-    d3_api_plugin,
+    d3_api_execute,
     d3_api_register_module,
 )
 from designer_plugin.d3sdk.ast_utils import (
@@ -85,7 +85,7 @@ def create_d3_plugin_method_wrapper(
     2. Serializes the arguments using repr()
     3. Builds a script string in the form: "return plugin.{method_name}({args})"
     4. Creates a PluginPayload with the script and module information
-    5. Sends it to Designer via d3_api_plugin or d3_api_aplugin
+    5. Sends it to Designer via d3_api_execute or d3_api_aexecute
     6. Returns the result from the remote execution
 
     Args:
@@ -112,7 +112,7 @@ def create_d3_plugin_method_wrapper(
                     session_runtime_error_message(self.__class__.__name__)
                 )
             payload = build_payload(self, method_name, positional, keyword)
-            response: PluginResponse[T] = await d3_api_aplugin(
+            response: PluginResponse[T] = await d3_api_aexecute(
                 self._hostname, self._port, payload
             )
             return response.returnValue
@@ -130,7 +130,7 @@ def create_d3_plugin_method_wrapper(
                     session_runtime_error_message(self.__class__.__name__)
                 )
             payload = build_payload(self, method_name, positional, keyword)
-            response: PluginResponse[T] = d3_api_plugin(
+            response: PluginResponse[T] = d3_api_execute(
                 self._hostname, self._port, payload
             )
             return response.returnValue

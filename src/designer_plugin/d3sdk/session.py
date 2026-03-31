@@ -9,10 +9,10 @@ import aiohttp
 
 from designer_plugin.api import (
     Method,
-    d3_api_aplugin,
+    d3_api_aexecute,
     d3_api_aregister_module,
     d3_api_arequest,
-    d3_api_plugin,
+    d3_api_execute,
     d3_api_register_module,
     d3_api_request,
 )
@@ -29,17 +29,18 @@ from designer_plugin.models import (
 class D3SessionBase:
     """Base class for Designer session management."""
 
-    def __init__(self, hostname: str, port: int, context_modules: list[str]) -> None:
+    def __init__(self, hostname: str, port: int, context_modules: set[str]) -> None:
         """Initialize base session with connection details and module context.
 
         Args:
             hostname: The hostname of the Designer instance.
             port: The port number of the Designer instance.
-            context_modules: List of module names to register when entering session context.
+            context_modules: Set of module names to register when entering session context.
         """
         self.hostname: str = hostname
         self.port: int = port
-        self.context_modules: list[str] = context_modules
+        self.context_modules: set[str] = context_modules
+        self.registered_modules: set[str] = set()
 
 
 class D3Session(D3SessionBase):
@@ -53,16 +54,16 @@ class D3Session(D3SessionBase):
         self,
         hostname: str,
         port: int = D3_PLUGIN_DEFAULT_PORT,
-        context_modules: list[str] | None = None,
+        context_modules: set[str] | None = None,
     ) -> None:
         """Initialize synchronous Designer session.
 
         Args:
             hostname: The hostname of the Designer instance.
             port: The port number of the Designer instance.
-            context_modules: Optional list of module names to register when entering session context.
+            context_modules: Optional set of module names to register when entering session context.
         """
-        super().__init__(hostname, port, context_modules or [])
+        super().__init__(hostname, port, context_modules or set())
 
     def __enter__(self) -> "D3Session":
         """Enter context manager and register all context modules.
@@ -117,7 +118,10 @@ class D3Session(D3SessionBase):
         Raises:
             PluginException: If the plugin execution fails.
         """
-        return d3_api_plugin(self.hostname, self.port, payload, timeout_sec)
+        if payload.moduleName and payload.moduleName not in self.registered_modules:
+            self.register_module(payload.moduleName)
+
+        return d3_api_execute(self.hostname, self.port, payload, timeout_sec)
 
     def request(self, method: Method, url_endpoint: str, **kwargs: Any) -> Any:
         """Make a generic HTTP request to Designer API.
@@ -152,6 +156,7 @@ class D3Session(D3SessionBase):
         )
         if payload:
             d3_api_register_module(self.hostname, self.port, payload, timeout_sec)
+            self.registered_modules.add(module_name)
             return True
         return False
 
@@ -186,16 +191,16 @@ class D3AsyncSession(D3SessionBase):
         self,
         hostname: str,
         port: int = D3_PLUGIN_DEFAULT_PORT,
-        context_modules: list[str] | None = None,
+        context_modules: set[str] | None = None,
     ) -> None:
         """Initialize asynchronous Designer session.
 
         Args:
             hostname: The hostname of the Designer instance.
             port: The port number of the Designer instance.
-            context_modules: Optional list of module names to register when entering session context.
+            context_modules: Optional set of module names to register when entering session context.
         """
-        super().__init__(hostname, port, context_modules or [])
+        super().__init__(hostname, port, context_modules or set())
 
     async def __aenter__(self) -> "D3AsyncSession":
         """Enter async context manager and register all context modules.
@@ -270,7 +275,10 @@ class D3AsyncSession(D3SessionBase):
         Raises:
             PluginException: If the plugin execution fails.
         """
-        return await d3_api_aplugin(self.hostname, self.port, payload, timeout_sec)
+        if payload.moduleName and payload.moduleName not in self.registered_modules:
+            await self.register_module(payload.moduleName)
+
+        return await d3_api_aexecute(self.hostname, self.port, payload, timeout_sec)
 
     async def register_module(
         self, module_name: str, timeout_sec: float | None = None
@@ -294,6 +302,7 @@ class D3AsyncSession(D3SessionBase):
             await d3_api_aregister_module(
                 self.hostname, self.port, payload, timeout_sec
             )
+            self.registered_modules.add(module_name)
             return True
         return False
 

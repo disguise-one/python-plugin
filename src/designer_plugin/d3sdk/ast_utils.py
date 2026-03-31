@@ -4,10 +4,70 @@ Copyright (c) 2025 Disguise Technologies ltd
 """
 
 import ast
+import functools
 import inspect
+import logging
 import textwrap
 import types
+from collections.abc import Callable
 from typing import Any
+
+from pydantic import BaseModel, Field
+
+from designer_plugin.d3sdk.builtin_modules import SUPPORTED_MODULES
+
+logger = logging.getLogger(__name__)
+
+
+###############################################################################
+# Package info models
+class ImportAlias(BaseModel):
+    """Represents a single imported name with an optional alias.
+
+    Mirrors the structure of ast.alias for Pydantic compatibility.
+    """
+
+    name: str = Field(
+        description="The imported name (e.g., 'Path' in 'from pathlib import Path')"
+    )
+    asname: str | None = Field(
+        default=None,
+        description="The alias (e.g., 'np' in 'import numpy as np')",
+    )
+
+
+class PackageInfo(BaseModel):
+    """Structured representation of a Python import statement.
+
+    Rendering rules (via to_import_statement using ast.unparse):
+    - package only              → import package
+    - package + alias           → import package as alias
+    - package + methods         → from package import method1, method2
+    - package + methods w/alias → from package import method1 as alias1
+    """
+
+    package: str = Field(description="The module/package name to import")
+    alias: str | None = Field(
+        default=None,
+        description="Alias for the package (e.g., 'np' in 'import numpy as np')",
+    )
+    methods: list[ImportAlias] = Field(
+        default_factory=list,
+        description="Imported names for 'from X import ...' style imports",
+    )
+
+    def to_import_statement(self) -> str:
+        """Render back to a Python import statement using ast.unparse."""
+        node: ast.stmt
+        if self.methods:
+            node = ast.ImportFrom(
+                module=self.package,
+                names=[ast.alias(name=m.name, asname=m.asname) for m in self.methods],
+                level=0,
+            )
+        else:
+            node = ast.Import(names=[ast.alias(name=self.package, asname=self.alias)])
+        return ast.unparse(node)
 
 
 ###############################################################################
@@ -369,94 +429,157 @@ def validate_and_extract_args(
 
 
 ###############################################################################
-# Python package finder utility
-def find_packages_in_current_file(caller_stack: int = 1) -> list[str]:
-    """Find all import statements in the caller's file by inspecting the call stack.
+# Function-scoped import extraction utility
+def _collect_used_names(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
+    """Collect all identifier names used inside a function body.
 
-    This function walks up the call stack to find the module where it was called from,
-    then parses that module's source code to extract all import statements that are
-    compatible with Python 2.7 and safe to send to Designer.
+    Walks the function's AST body and extracts:
+    - Simple names (ast.Name nodes, e.g., ``foo`` in ``foo()``)
+    - Root names of attribute chains (e.g., ``np`` in ``np.array()``)
 
     Args:
-        caller_stack: Number of frames to go up the call stack. Default is 1 (immediate caller).
-                     Use higher values to inspect files further up the call chain.
+        func_node: The function AST node to analyse.
 
     Returns:
-        Sorted list of unique import statement strings (e.g., "import ast", "from pathlib import Path").
+        Set of identifier strings used in the function body.
+    """
+    names: set[str] = set()
+    for node in ast.walk(func_node):
+        if isinstance(node, ast.Name):
+            names.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            # Walk down the attribute chain to find the root name
+            root: ast.expr = node
+            while isinstance(root, ast.Attribute):
+                root = root.value
+            if isinstance(root, ast.Name):
+                names.add(root.id)
+    return names
+
+
+def _is_type_checking_block(node: ast.If) -> bool:
+    """Check if an if statement is ``if TYPE_CHECKING:``."""
+    if isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING":
+        return True
+    # Also match `if typing.TYPE_CHECKING:`
+    if isinstance(node.test, ast.Attribute):
+        return (
+            node.test.attr == "TYPE_CHECKING"
+            and isinstance(node.test.value, ast.Name)
+            and node.test.value.id == "typing"
+        )
+    return False
+
+
+def _is_supported_module(module_name: str) -> bool:
+    """Check if a module (or its top-level parent) is Designer-supported."""
+    top_level = module_name.split(".")[0]
+    return top_level in SUPPORTED_MODULES
+
+
+@functools.lru_cache(maxsize=128)
+def _get_module_ast(module: types.ModuleType) -> ast.Module | None:
+    """Return the parsed AST for *module*, cached by module identity."""
+    try:
+        return ast.parse(inspect.getsource(module))
+    except (OSError, TypeError):
+        return None
+
+
+def find_imports_for_function(func: Callable[..., Any]) -> list[PackageInfo]:
+    """Extract import statements used by a function from its source file.
+
+    Inspects the module containing *func*, parses all top-level imports, then
+    filters them down to only those whose imported names are actually referenced
+    inside the function body.
+
+    Args:
+        func: The callable to analyse.
+
+    Returns:
+        Sorted list of :class:`PackageInfo` objects representing the imports
+        used by *func*.
 
     Filters applied:
-        - Excludes imports inside `if TYPE_CHECKING:` blocks (type checking only)
-        - Excludes imports from the 'd3blobgen' package (client-side only)
-        - Excludes imports from the 'typing' module (not supported in Python 2.7)
-        - Excludes imports of this function itself to avoid circular references
+        - Excludes imports inside ``if TYPE_CHECKING:`` blocks
+        - Only includes imports from Designer-supported builtin modules
+          (see ``SUPPORTED_MODULES`` in ``builtin_modules.py``)
+        - Only includes imports whose names are actually used in the function body
     """
-    # Get the this file frame
-    current_frame: types.FrameType | None = inspect.currentframe()
-    if not current_frame:
+    # --- 1. Get the function's module source ---
+    module = inspect.getmodule(func)
+    if not module:
         return []
 
-    # Get the caller's frame (file where this function is called)
-    caller_frame: types.FrameType | None = current_frame
-    for _ in range(caller_stack):
-        if not caller_frame or not caller_frame.f_back:
-            return []
-        caller_frame = caller_frame.f_back
-
-    if not caller_frame:
+    module_tree = _get_module_ast(module)
+    if module_tree is None:
+        logger.warning(
+            "Cannot detect file-level imports for '%s': module source unavailable "
+            "(e.g. Jupyter notebook). Place imports inside the function body instead.",
+            func.__qualname__,
+        )
         return []
 
-    modules: types.ModuleType | None = inspect.getmodule(caller_frame)
-    if not modules:
+    # --- 2. Collect names used inside the function body ---
+    func_source = textwrap.dedent(inspect.getsource(func))
+    func_tree = ast.parse(func_source)
+    if not func_tree.body:
         return []
 
-    source: str = inspect.getsource(modules)
+    func_node = func_tree.body[0]
+    if not isinstance(func_node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return []
 
-    # Parse the source code
-    tree = ast.parse(source)
+    used_names = _collect_used_names(func_node)
 
-    # Get the name of this function to filter it out
-    # For example, we don't want `from core import find_packages_in_current_file`
-    function_name: str = current_frame.f_code.co_name
-    # Skip any package from d3blobgen
-    d3blobgen_package_name: str = "d3blobgen"
-    # typing not supported in python2.7
-    typing_package_name: str = "typing"
-
-    def is_type_checking_block(node: ast.If) -> bool:
-        """Check if an if statement is 'if TYPE_CHECKING:'"""
-        return isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
-
-    imports: list[str] = []
-    for node in tree.body:
-        # Skip TYPE_CHECKING blocks entirely
-        if isinstance(node, ast.If) and is_type_checking_block(node):
+    # --- 3. Parse file-level imports and filter to used ones ---
+    packages: list[PackageInfo] = []
+    for node in module_tree.body:
+        # Skip TYPE_CHECKING blocks
+        if isinstance(node, ast.If) and _is_type_checking_block(node):
             continue
 
         if isinstance(node, ast.Import):
-            imported_modules: list[str] = [alias.name for alias in node.names]
-            # Skip imports that include d3blobgen
-            if any(d3blobgen_package_name in module for module in imported_modules):
-                continue
-            if any(typing_package_name in module for module in imported_modules):
-                continue
-            import_text: str = f"import {', '.join(imported_modules)}"
-            imports.append(import_text)
+            for alias in node.names:
+                if not _is_supported_module(alias.name):
+                    continue
+
+                # The name used in code is the alias if present, otherwise the top-level
+                # package name (e.g. "import logging.handlers" binds "logging", not
+                # "logging.handlers").
+                effective_name = (
+                    alias.asname if alias.asname else alias.name.split(".")[0]
+                )
+                if effective_name in used_names:
+                    packages.append(
+                        PackageInfo(
+                            package=alias.name,
+                            alias=alias.asname,
+                        )
+                    )
 
         elif isinstance(node, ast.ImportFrom):
-            imported_module: str | None = node.module
-            imported_names: list[str] = [alias.name for alias in node.names]
-            if not imported_module:
+            if not node.module:
                 continue
-            # Skip imports that include d3blobgen
-            if d3blobgen_package_name in imported_module:
-                continue
-            elif typing_package_name in imported_module:
-                continue
-            # Skip imports that include this function itself
-            if function_name in imported_names:
+            if not _is_supported_module(node.module):
                 continue
 
-            line_text = f"from {imported_module} import {', '.join(imported_names)}"
-            imports.append(line_text)
+            # Filter to only methods actually used by the function
+            matched_methods: list[ImportAlias] = []
+            for alias in node.names:
+                effective_name = alias.asname if alias.asname else alias.name
+                if effective_name in used_names:
+                    matched_methods.append(
+                        ImportAlias(name=alias.name, asname=alias.asname)
+                    )
 
-    return sorted(set(imports))
+            if matched_methods:
+                packages.append(
+                    PackageInfo(
+                        package=node.module,
+                        methods=matched_methods,
+                    )
+                )
+
+    # Sort by import statement string for deterministic output
+    return sorted(packages, key=lambda p: p.to_import_statement())
