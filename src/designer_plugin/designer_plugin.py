@@ -12,7 +12,35 @@ from zeroconf.asyncio import AsyncZeroconf
 
 
 class DesignerPlugin:
-    """When used as a context manager (using the `with` statement), publish a plugin using DNS-SD for the Disguise Designer application"""
+    """Publish a plugin via DNS-SD so the Disguise Designer application can discover it.
+
+    Use as a context manager (sync or async) to register and unregister the service
+    automatically.
+
+    Examples:
+        Sync context manager:
+
+        ```python
+        from designer_plugin import DesignerPlugin
+
+        with DesignerPlugin("MyPlugin", 9999) as plugin:
+            # Plugin is now discoverable via DNS-SD by Designer
+            input("Press Enter to stop...")
+        ```
+
+        Async context manager:
+
+        ```python
+        import asyncio
+        from designer_plugin import DesignerPlugin
+
+        async def main():
+            async with DesignerPlugin("MyPlugin", 9999) as plugin:
+                await asyncio.sleep(60)  # Keep plugin discoverable for 60 seconds
+
+        asyncio.run(main())
+        ```
+    """
 
     def __init__(
         self,
@@ -36,7 +64,25 @@ class DesignerPlugin:
 
     @staticmethod
     def default_init(port: int, hostname: str | None = None) -> "DesignerPlugin":
-        """Initialize the plugin options with the values in d3plugin.json."""
+        """Initialize the plugin options with the values in d3plugin.json.
+
+        Reads `name`, `url`, `requiresSession`, and `isDisguise` from `./d3plugin.json`
+        in the current working directory.
+
+        Args:
+            port: The port number to publish the plugin on.
+            hostname: Optional hostname override. Defaults to the machine hostname.
+
+        Returns:
+            A DesignerPlugin instance configured from d3plugin.json.
+
+        Examples:
+            ```python
+            # Reads name/url from ./d3plugin.json, uses provided port
+            with DesignerPlugin.default_init(port=9999) as plugin:
+                input("Press Enter to stop...")
+            ```
+        """
         return DesignerPlugin.from_json_file(
             file_path="./d3plugin.json", port=port, hostname=hostname
         )
@@ -45,7 +91,22 @@ class DesignerPlugin:
     def from_json_file(
         file_path: str, port: int, hostname: str | None = None
     ) -> "DesignerPlugin":
-        """Convert a JSON file (expected d3plugin.json) to PluginOptions. hostname and port are required."""
+        """Load plugin options from a JSON file (d3plugin.json format).
+
+        Args:
+            file_path: Path to the JSON configuration file.
+            port: The port number to publish the plugin on.
+            hostname: Optional hostname override. Defaults to the machine hostname.
+
+        Returns:
+            A DesignerPlugin instance configured from the JSON file.
+
+        Examples:
+            ```python
+            with DesignerPlugin.from_json_file("config/my_plugin.json", port=9999) as plugin:
+                input("Press Enter to stop...")
+            ```
+        """
         with open(file_path) as f:
             options = json_load(f)
             return DesignerPlugin(
