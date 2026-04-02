@@ -259,6 +259,39 @@ When requesting features, please include:
 - Update CHANGELOG.md following Keep a Changelog format
 - Add examples for new features
 
+### Generating API Documentation
+
+The API reference pages for the [developer.disguise.one](https://developer.disguise.one) documentation site are generated from docstrings using `scripts/generate_astro_docs.py`.
+
+Run it from the repo root, pointing at your local clone of the `d3_doc_dev` docs repository:
+
+```bash
+python scripts/generate_astro_docs.py --docs-repo /path/to/d3_doc_dev
+```
+
+The default `--docs-repo` path is `C:/dev/d3docs/d3_doc_dev`. If your clone is at that location you can omit the flag:
+
+```bash
+python scripts/generate_astro_docs.py
+```
+
+The script requires no additional dependencies — it uses only the Python standard library.
+
+**When to re-run:**
+- After adding or modifying docstrings on any public API
+- After adding a new public class or function
+
+**What it generates** (output directory: `src/pages/plugins/designer-plugin/` inside the docs repo):
+
+| File | Content |
+|------|---------|
+| `index.md` | Overview and quick-reference table |
+| `designer-plugin.md` | `DesignerPlugin` class |
+| `models.md` | All request/response models |
+| `d3session.md` | `D3Session` and `D3AsyncSession` |
+| `d3pluginclient.md` | `D3PluginClient` base class |
+| `d3sdk.md` | `@d3function`, `@d3pythonscript`, and utility functions |
+
 ### Documentation Style
 
 - Write clear, concise documentation
