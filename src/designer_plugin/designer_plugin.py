@@ -120,7 +120,7 @@ class DesignerPlugin:
 
     @property
     def service_info(self) -> ServiceInfo:
-        """Convert the options to a dictionary suitable for DNS-SD service properties."""
+        """Get the ServiceInfo object suitable for DNS-SD service registration."""
         properties = {
             b"t": b"web",
             b"s": b"true" if self.requires_session else b"false",

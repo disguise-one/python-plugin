@@ -515,7 +515,7 @@ def d3function(module_name: str = "") -> Callable[[Callable[P, T]], D3Function[P
         # payload.script == "return get_camera_uid('camera1')"
 
         # "my_d3module" is auto-registered when entering the session
-        with D3Session('localhost', 80, ["my_d3module"]) as session:
+        with D3Session('localhost', 80, {"my_d3module"}) as session:
             uid = session.rpc(get_camera_uid.payload("camera1"))
         ```
     """
@@ -537,6 +537,8 @@ def get_register_payload(module_name: str) -> RegisterPayload | None:
 
     Examples:
         ```python
+        from designer_plugin.d3sdk import get_register_payload
+
         payload = get_register_payload("mymodule")
         if payload:
             print(payload.contents)

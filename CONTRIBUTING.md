@@ -261,43 +261,25 @@ When requesting features, please include:
 
 ### Generating API Documentation
 
-The API reference pages for the [developer.disguise.one](https://developer.disguise.one) documentation site are generated from docstrings using `scripts/generate_astro_docs.py`.
+The API reference page for the [developer.disguise.one](https://developer.disguise.one) documentation site is generated from docstrings using `scripts/generate_astro_docs.py`.
 
-Run it from the repo root, pointing at your local clone of the `d3_doc_dev` docs repository:
-
-```bash
-python scripts/generate_astro_docs.py --docs-repo /path/to/d3_doc_dev
-```
-
-The default `--docs-repo` path is `C:/dev/d3docs/d3_doc_dev`. If your clone is at that location you can omit the flag:
+Run it from the repo root:
 
 ```bash
 python scripts/generate_astro_docs.py
 ```
 
-The script requires no additional dependencies — it uses only the Python standard library.
+By default the output is written to `dist/reference.md`. To write elsewhere:
 
-**When to re-run:**
-- After adding or modifying docstrings on any public API
-- After adding a new public class or function
+```bash
+python scripts/generate_astro_docs.py --output /path/to/output/dir
+```
 
-**What it generates** (output directory: `src/pages/plugins/designer-plugin/` inside the docs repo):
+**What it generates:**
 
 | File | Content |
 |------|---------|
-| `index.md` | Overview and quick-reference table |
-| `designer-plugin.md` | `DesignerPlugin` class |
-| `models.md` | All request/response models |
-| `d3session.md` | `D3Session` and `D3AsyncSession` |
-| `d3pluginclient.md` | `D3PluginClient` base class |
-| `d3sdk.md` | `@d3function`, `@d3pythonscript`, and utility functions |
-
-### Documentation Style
-
-- Write clear, concise documentation
-- Include code examples
-- Explain the "why" not just the "what"
-- Keep documentation up to date with code
+| `reference.md` | Full API reference with table of contents, covering `DesignerPlugin`, models, sessions, client, and decorators |
 
 ## Release Process
 

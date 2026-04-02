@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Generate a single reference.md for the designer-plugin package.
+"""
+MIT License
+Copyright (c) 2025 Disguise Technologies ltd
+
+Generate a single reference.md for the designer-plugin package.
 
 Parses Python docstrings with ast (no import required) and writes a single
 reference.md file with a table of contents.
@@ -12,24 +16,27 @@ Run from the python-plugin repo root:
 import argparse
 import ast
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
-from typing import Union
+from typing import TypeAlias
 
-# ── Configuration ─────────────────────────────────────────────────────────────
+###############################################################################
+# Configuration
 REPO_ROOT: Path = Path(__file__).parent.parent
-DEFAULT_OUTPUT_DIR = REPO_ROOT / "dist"
-LAYOUT = "../../../layouts/HeroLayout.astro"
-URL_BASE = "plugins/designer-plugin"
-AUTHOR = "Disguise"
-DATE = datetime.now().strftime("%d-%b-%Y")
-SRC = Path("src/designer_plugin")
+DEFAULT_OUTPUT_DIR: Path = REPO_ROOT / "dist"
+LAYOUT: str = "../../../layouts/HeroLayout.astro"
+URL_BASE: str = "plugins/designer-plugin"
+AUTHOR: str = "Disguise"
+DATE: str = datetime.now().strftime("%d %b %Y")
+SRC: Path = Path("src/designer_plugin")
 
-FuncNode = Union[ast.FunctionDef, ast.AsyncFunctionDef]
+FuncNode: TypeAlias = ast.FunctionDef | ast.AsyncFunctionDef
 
-# ── AST helpers ───────────────────────────────────────────────────────────────
+###############################################################################
+# AST helpers
 
 
 def load_tree(rel_path: Path) -> ast.Module:
@@ -104,7 +111,32 @@ def func_signature(func: FuncNode, skip_self: bool = True) -> str:
     return f"({', '.join(params)})"
 
 
-# ── Google docstring parser ────────────────────────────────────────────────────
+def _func_types(func: FuncNode) -> dict[str, str]:
+    """Return {arg_name: type_string} from the function's type annotations."""
+    result = {}
+    for arg in func.args.args + func.args.posonlyargs + func.args.kwonlyargs:
+        if arg.annotation:
+            result[arg.arg] = unparse_type(arg.annotation)
+    return result
+
+
+def _func_defaults(func: FuncNode) -> dict[str, str]:
+    """Return {arg_name: default_value_string} for args that have defaults."""
+    a = func.args
+    offset = len(a.args) - len(a.defaults)
+    result = {}
+    for i, arg in enumerate(a.args):
+        di = i - offset
+        if 0 <= di < len(a.defaults):
+            result[arg.arg] = ast.unparse(a.defaults[di])
+    for kw_default, kw_arg in zip(a.kw_defaults, a.kwonlyargs, strict=True):
+        if kw_default is not None:
+            result[kw_arg.arg] = ast.unparse(kw_default)
+    return result
+
+
+###############################################################################
+# Google docstring parser
 
 _SECT_RE = re.compile(
     r"^(Args|Returns|Raises|Attributes|Class Attributes|Examples?|Note|Usage|Yields):\s*$",
@@ -115,10 +147,12 @@ _SECT_RE = re.compile(
 @dataclass
 class DocSection:
     description: str = ""
-    args: list[dict] = field(default_factory=list)  # {"name", "type", "desc"}
+    args: list[dict[str, str]] = field(default_factory=list)  # {"name", "type", "desc"}
     returns: str = ""
-    raises: list[dict] = field(default_factory=list)  # {"type", "desc"}
-    attributes: list[dict] = field(default_factory=list)  # {"name", "type", "desc"}
+    raises: list[dict[str, str]] = field(default_factory=list)  # {"type", "desc"}
+    attributes: list[dict[str, str]] = field(
+        default_factory=list
+    )  # {"name", "type", "desc"}
     examples: str = ""
 
     @property
@@ -190,7 +224,8 @@ def parse_docstring(raw: str) -> DocSection:
     return d
 
 
-# ── Markdown renderers ─────────────────────────────────────────────────────────
+###############################################################################
+# Markdown renderers
 
 
 def render_doc_sections(doc: DocSection) -> list[str]:
@@ -198,13 +233,13 @@ def render_doc_sections(doc: DocSection) -> list[str]:
     out: list[str] = []
     if doc.args:
         out += ["", "Parameters:", ""]
+        out += ["| Name | Type | Description |", "|------|------|-------------|"]
         for a in doc.args:
-            s = f"- `{a['name']}`"
-            if a["type"]:
-                s += f" (*{a['type']}*)"
-            if a["desc"]:
-                s += f": {a['desc']}"
-            out.append(s)
+            name = f"`{a['name']}`"
+            escaped_type = a["type"].replace("|", "\\|")
+            type_ = f"`{escaped_type}`" if a["type"] else ""
+            desc = (a["desc"] or "").replace("|", "\\|")
+            out.append(f"| {name} | {type_} | {desc} |")
     if doc.returns:
         out += ["", f"Returns: {doc.returns}"]
     if doc.raises:
@@ -224,8 +259,21 @@ def render_method(func: FuncNode, is_method: bool = True, h: int = 4) -> list[st
     sig = func_signature(func, skip_self=is_method)
     ret = f" → {unparse_type(func.returns)}" if func.returns else ""
     prefix = "async " if is_async else ""
-    out = [f"{'#' * h} **{func.name}**", "", "```py", f"{prefix}{func.name}{sig}{ret}", "```", ""]
+    out = [
+        f"{'#' * h} **{func.name}**",
+        "",
+        "```py",
+        f"{prefix}{func.name}{sig}{ret}",
+        "```",
+        "",
+    ]
     doc = parse_docstring(get_docstring(func))
+    defaults = _func_defaults(func)
+    types = _func_types(func)
+    for a in doc.args:
+        a["default"] = defaults.get(a["name"], "")
+        if not a["type"]:
+            a["type"] = types.get(a["name"], "")
     if doc.description:
         out += [doc.description, ""]
     out += render_doc_sections(doc)
@@ -236,6 +284,28 @@ def _is_decorator(func: FuncNode, name: str) -> bool:
     return any((isinstance(d, ast.Name) and d.id == name) for d in func.decorator_list)
 
 
+def get_class_fields(node: ast.ClassDef) -> list[dict[str, str]]:
+    """Extract {name, type, desc} from class-level annotated Field() assignments."""
+    fields = []
+    for child in node.body:
+        if not isinstance(child, ast.AnnAssign) or not isinstance(
+            child.target, ast.Name
+        ):
+            continue
+        name = child.target.id
+        if name.startswith("_"):
+            continue
+        type_str = unparse_type(child.annotation) if child.annotation else ""
+        desc = ""
+        if child.value and isinstance(child.value, ast.Call):
+            for kw in child.value.keywords:
+                if kw.arg == "description" and isinstance(kw.value, ast.Constant):
+                    desc = kw.value.value
+                    break
+        fields.append({"name": name, "type": type_str, "desc": desc})
+    return fields
+
+
 def render_class_body(node: ast.ClassDef, h: int = 2) -> list[str]:
     """Render class internals (no class-name heading). h = heading level for sections."""
     hn = "#" * h + " "
@@ -243,9 +313,10 @@ def render_class_body(node: ast.ClassDef, h: int = 2) -> list[str]:
     out: list[str] = []
     if doc.description:
         out += [doc.description, ""]
-    if doc.attributes:
+    attrs = doc.attributes or get_class_fields(node)
+    if attrs:
         out += [f"{hn}Attributes", ""]
-        for a in doc.attributes:
+        for a in attrs:
             out.append(f"{'#' * (h + 1)} **{a['name']}**")
             if a["desc"]:
                 out += ["", a["desc"], ""]
@@ -299,7 +370,8 @@ def render_class_body(node: ast.ClassDef, h: int = 2) -> list[str]:
     return out
 
 
-# ── Heading helpers ───────────────────────────────────────────────────────────
+###############################################################################
+# Heading helpers
 
 
 def demote_headings(content: str) -> str:
@@ -314,7 +386,7 @@ def _to_anchor(text: str) -> str:
 
 
 def generate_toc(content: str) -> str:
-    """Build a TOC from H2 and H3 headings in *content*, skipping code fences."""
+    """Build a TOC from H1 and H2 headings in *content*, skipping code fences."""
     entries: list[str] = []
     in_fence = False
     for line in content.splitlines():
@@ -334,13 +406,15 @@ def generate_toc(content: str) -> str:
     return "## Table of Contents\n\n" + "\n".join(entries)
 
 
-# ── Page builders ─────────────────────────────────────────────────────────────
+###############################################################################
+# Page builders
 
 
 def page_single_class(class_name: str, src_file: str) -> str:
     tree = load_tree(Path(src_file))
     node = find_class(tree, class_name)
-    assert node, f"Class {class_name!r} not found in {src_file}"
+    if node is None:
+        raise ValueError(f"Class {class_name!r} not found in {src_file}")
     lines = [f"# {class_name}", ""]
     lines += render_class_body(node, h=2)
     return "\n".join(lines) + "\n"
@@ -355,7 +429,8 @@ def page_multi_class(
     for class_name, src_file in classes:
         tree = load_tree(Path(src_file))
         node = find_class(tree, class_name)
-        assert node, f"Class {class_name!r} not found in {src_file}"
+        if node is None:
+            raise ValueError(f"Class {class_name!r} not found in {src_file}")
         lines += [f"## {class_name}", ""]
         lines += render_class_body(node, h=3)
         lines += [""]
@@ -371,12 +446,19 @@ def page_functions(
     for func_name, src_file in functions:
         tree = load_tree(Path(src_file))
         node = find_function(tree, func_name)
-        assert node, f"Function {func_name!r} not found in {src_file}"
+        if node is None:
+            raise ValueError(f"Function {func_name!r} not found in {src_file}")
         is_async = isinstance(node, ast.AsyncFunctionDef)
         sig = func_signature(node, skip_self=False)
         ret = f" → {unparse_type(node.returns)}" if node.returns else ""
         prefix = "async " if is_async else ""
         doc = parse_docstring(get_docstring(node))
+        defaults = _func_defaults(node)
+        types = _func_types(node)
+        for a in doc.args:
+            a["default"] = defaults.get(a["name"], "")
+            if not a["type"]:
+                a["type"] = types.get(a["name"], "")
         lines += [f"## @{func_name}", "", f"{prefix}{func_name}{sig}{ret}", ""]
         if doc.description:
             lines += [doc.description, ""]
@@ -385,28 +467,15 @@ def page_functions(
     return "\n".join(lines) + "\n"
 
 
-# ── Page manifest ─────────────────────────────────────────────────────────────
+###############################################################################
+# Page manifest
 
-SECTIONS: list = [
+SECTIONS: list[Callable[[], str]] = [
     lambda: page_multi_class(
         "Publish",
         "",
         [
             ("DesignerPlugin", "designer_plugin.py"),
-        ]
-    ),
-    lambda: page_multi_class(
-        "Models",
-        "Pydantic models and types used in the Designer Plugin API.",
-        [
-            ("PluginPayload", "models.py"),
-            ("PluginResponse", "models.py"),
-            ("PluginError", "models.py"),
-            ("PluginRegisterResponse", "models.py"),
-            ("PluginStatus", "models.py"),
-            ("PluginStatusDetail", "models.py"),
-            ("RegisterPayload", "models.py"),
-            ("PluginException", "models.py"),
         ],
     ),
     lambda: page_multi_class(
@@ -422,7 +491,7 @@ SECTIONS: list = [
         "",
         [
             ("D3PluginClient", "d3sdk/client.py"),
-        ]
+        ],
     ),
     lambda: page_functions(
         "Decorators",
@@ -432,15 +501,31 @@ SECTIONS: list = [
             ("d3pythonscript", "d3sdk/function.py"),
         ],
     ),
+    lambda: page_multi_class(
+        "Models",
+        "Pydantic models and types used in the Designer Plugin API.",
+        [
+            ("PluginPayload", "models.py"),
+            ("PluginResponse", "models.py"),
+            ("PluginError", "models.py"),
+            ("PluginRegisterResponse", "models.py"),
+            ("PluginStatus", "models.py"),
+            ("PluginStatusDetail", "models.py"),
+            ("RegisterPayload", "models.py"),
+            ("PluginException", "models.py"),
+        ],
+    ),
 ]
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+###############################################################################
+# Entry point
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Generate a single reference.md for the designer-plugin package.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "--output",
@@ -455,19 +540,21 @@ def main() -> None:
     sections = [builder() for builder in SECTIONS]
     body = "\n\n---\n\n".join(sections)
     toc = generate_toc(body)
-    fm = "\n".join([
-        "---",
-        'title: "Python SDK Reference"',
-        'description: "Python SDK reference."',
-        f"layout: {LAYOUT}",
-        f'author: "{AUTHOR}"',
-        f'date: "{DATE}"',
-        f'url: "{URL_BASE}/reference"',
-        "---",
-        "",
-        "# Python SDK Reference",
-        "",
-    ])
+    fm = "\n".join(
+        [
+            "---",
+            'title: "designer-plugin Reference"',
+            'description: "designer-plugin reference."',
+            f"layout: {LAYOUT}",
+            f'author: "{AUTHOR}"',
+            f'date: "{DATE}"',
+            f'url: "{URL_BASE}/reference"',
+            "---",
+            "",
+            "# designer-plugin Reference",
+            "",
+        ]
+    )
     output = f"{fm}\n{toc}\n\n---\n\n{body}"
 
     out_file = out_dir / "reference.md"

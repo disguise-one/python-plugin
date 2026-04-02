@@ -181,9 +181,19 @@ class PluginPayload(BaseModel, Generic[RetType]):
     script: str = Field(description="Script to run on Designer.")
 
     def is_module_payload(self) -> bool:
+        """Return True if this payload targets a named module.
+
+        Returns:
+            True if moduleName is set, False otherwise.
+        """
         return bool(self.moduleName)
 
     def debug_string(self) -> str:
+        """Return a human-readable debug representation of this payload.
+
+        Returns:
+            A formatted string showing the JSON serialisation and raw script content.
+        """
         return f"""
 {"json ":{'='}<60}
 {self.model_dump_json(indent=2)}

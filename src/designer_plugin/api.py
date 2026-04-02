@@ -166,7 +166,7 @@ async def d3_api_aexecute(
 
         payload = PluginPayload(script="return 1 + 1")
         response = await d3_api_aexecute("localhost", 80, payload)
-        print(response.returnValue)  # 2
+        print(response.returnValue)  # "2"
         ```
     """
     if logger.isEnabledFor(logging.DEBUG):
@@ -283,7 +283,7 @@ def d3_api_execute(
 
         payload = PluginPayload(script="return 1 + 1")
         response = d3_api_execute("localhost", 80, payload)
-        print(response.returnValue)  # 2
+        print(response.returnValue)  # "2"
         ```
     """
 
