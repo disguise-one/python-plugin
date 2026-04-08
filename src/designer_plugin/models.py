@@ -79,6 +79,13 @@ class PluginResponse(BaseModel, Generic[RetType]):
 
         Raises:
             ValidationError: If the return value cannot be validated as the specified type.
+
+        Examples:
+            ```python
+            response = session.execute(get_surface_info.payload("surface 1"))
+            info = response.returnCastValue(dict[str, str])
+            print(info["uid"])
+            ```
         """
         adapter = TypeAdapter(castType)
         return adapter.validate_python(self.returnValue)
@@ -114,6 +121,18 @@ class PluginException(Exception):
         status: The status information from the failed plugin call
         d3Log: Designer console log output
         pythonLog: Python-specific log output
+
+    Examples:
+        ```python
+        from designer_plugin import PluginException
+
+        try:
+            result = session.rpc(my_func.payload())
+        except PluginException as e:
+            print(f"Error code: {e.status.code}")
+            print(f"Message: {e.status.message}")
+            print(f"Python log: {e.pythonLog}")
+        ```
     """
 
     status: PluginStatus
@@ -162,9 +181,19 @@ class PluginPayload(BaseModel, Generic[RetType]):
     script: str = Field(description="Script to run on Designer.")
 
     def is_module_payload(self) -> bool:
+        """Return True if this payload targets a named module.
+
+        Returns:
+            True if moduleName is set, False otherwise.
+        """
         return bool(self.moduleName)
 
     def debug_string(self) -> str:
+        """Return a human-readable debug representation of this payload.
+
+        Returns:
+            A formatted string showing the JSON serialisation and raw script content.
+        """
         return f"""
 {"json ":{'='}<60}
 {self.model_dump_json(indent=2)}

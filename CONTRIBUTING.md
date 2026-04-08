@@ -259,12 +259,27 @@ When requesting features, please include:
 - Update CHANGELOG.md following Keep a Changelog format
 - Add examples for new features
 
-### Documentation Style
+### Generating API Documentation
 
-- Write clear, concise documentation
-- Include code examples
-- Explain the "why" not just the "what"
-- Keep documentation up to date with code
+The API reference page for the [developer.disguise.one](https://developer.disguise.one) documentation site is generated from docstrings using `scripts/generate_astro_docs.py`.
+
+Run it from the repo root:
+
+```bash
+python scripts/generate_astro_docs.py
+```
+
+By default the output is written to `dist/reference.md`. To write elsewhere:
+
+```bash
+python scripts/generate_astro_docs.py --output /path/to/output/dir
+```
+
+**What it generates:**
+
+| File | Content |
+|------|---------|
+| `reference.md` | Full API reference with table of contents, covering `DesignerPlugin`, models, sessions, client, and decorators |
 
 ## Release Process
 

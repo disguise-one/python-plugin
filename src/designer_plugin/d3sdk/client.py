@@ -343,37 +343,47 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
     - Wraps all your methods to execute remotely
     - Manages module registration with Designer
 
-    Usage:
-    ```python
-    from typing import TYPE_CHECKING
-    if TYPE_CHECKING:
-        from d3blobgen.scripts.d3 import *
-
-    class MyPlugin(D3PluginClient):
-        def __init__(self, arg1: int, arg2: str):
-            # Passed argument will be cached and used on register
-            self.arg1: int = arg1
-            self.arg2: str = arg2
-
-        def get_surface_uid(self, surface_name: str) -> dict[str, str]:
-            surface: Screen2 = resourceManager.load(
-                Path('objects/screen2/{}.apx'.format(surface_name)),
-                Screen2
-            )
-            return {
-                "name": surface.description,
-                "uid": surface.uid,
-            }
-
-    # Instantiate MyPlugin
-    plugin = MyPlugin(1, "myplugin")
-
-    # Use as sync context manager
-    with plugin.session("localhost", 80):
-        result = plugin.get_surface_uid("surface 1")
-    ```
     Attributes:
         instance_code: The code used to instantiate the plugin remotely (set on init)
+
+    Examples:
+        Sync usage:
+
+        ```python
+        from designer_plugin.d3sdk import D3PluginClient
+        from designer_plugin.pystub import *
+
+        class MyPlugin(D3PluginClient):
+            def get_surface_uid(self, surface_name: str) -> str:
+                surface: Screen2 = resourceManager.load(
+                    Path(f'objects/screen2/{surface_name}.apx'), Screen2)
+                return str(surface.uid)
+
+        plugin = MyPlugin()
+        with plugin.session('localhost', 80):
+            uid = plugin.get_surface_uid("surface 1")
+        ```
+
+        Async usage:
+
+        ```python
+        import asyncio
+        from designer_plugin.d3sdk import D3PluginClient
+        from designer_plugin.pystub import *
+
+        class MyPlugin(D3PluginClient):
+            async def get_surface_uid(self, surface_name: str) -> str:
+                surface: Screen2 = resourceManager.load(
+                    Path(f'objects/screen2/{surface_name}.apx'), Screen2)
+                return str(surface.uid)
+
+        async def main():
+            plugin = MyPlugin()
+            async with plugin.async_session('localhost', 80):
+                uid = await plugin.get_surface_uid("surface 1")
+
+        asyncio.run(main())
+        ```
     """
 
     def __init__(self) -> None:
@@ -408,6 +418,26 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
 
         Yields:
             The plugin client instance with active session.
+
+        Examples:
+            ```python
+            import asyncio
+            from designer_plugin.d3sdk import D3PluginClient
+            from designer_plugin.pystub import *
+
+            class MyPlugin(D3PluginClient):
+                async def get_surface_uid(self, surface_name: str) -> str:
+                    surface: Screen2 = resourceManager.load(
+                        Path(f'objects/screen2/{surface_name}.apx'), Screen2)
+                    return str(surface.uid)
+
+            async def main():
+                plugin = MyPlugin()
+                async with plugin.async_session('localhost', 80):
+                    uid = await plugin.get_surface_uid("surface 1")
+
+            asyncio.run(main())
+            ```
         """
         try:
             if module_name:
@@ -446,6 +476,22 @@ class D3PluginClient(metaclass=D3PluginClientMeta):
 
         Yields:
             The plugin client instance with active session.
+
+        Examples:
+            ```python
+            from designer_plugin.d3sdk import D3PluginClient
+            from designer_plugin.pystub import *
+
+            class MyPlugin(D3PluginClient):
+                def get_surface_uid(self, surface_name: str) -> str:
+                    surface: Screen2 = resourceManager.load(
+                        Path(f'objects/screen2/{surface_name}.apx'), Screen2)
+                    return str(surface.uid)
+
+            plugin = MyPlugin()
+            with plugin.session('localhost', 80):
+                uid = plugin.get_surface_uid("surface 1")
+            ```
         """
         try:
             if module_name:
