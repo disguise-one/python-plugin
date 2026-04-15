@@ -1,0 +1,76 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bump version in pyproject.toml
+        id: bump
+        env:
+          BUMP_TYPE: ${{ github.event.inputs.bump_type }}
+        run: |
+          python3 << 'EOF'
+          import re, os, sys
+
+          bump_type = os.environ["BUMP_TYPE"]
+
+          with open("pyproject.toml") as f:
+              content = f.read()
+
+          match = re.search(r'^version = "(\d+)\.(\d+)\.(\d+)"', content, re.MULTILINE)
+          if not match:
+              print("Could not find version in pyproject.toml", file=sys.stderr)
+              sys.exit(1)
+
+          major, minor, patch = int(match.group(1)), int(match.group(2)), int(match.group(3))
+          old_version = f"{major}.{minor}.{patch}"
+
+          if bump_type == "major":
+              major += 1; minor = 0; patch = 0
+          elif bump_type == "minor":
+              minor += 1; patch = 0
+          else:
+              patch += 1
+
+          new_version = f"{major}.{minor}.{patch}"
+          new_content = content.replace(f'version = "{old_version}"', f'version = "{new_version}"', 1)
+
+          with open("pyproject.toml", "w") as f:
+              f.write(new_content)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"old_version={old_version}\n")
+              f.write(f"new_version={new_version}\n")
+
+          print(f"Version bumped: {old_version} -> {new_version}")
+          EOF
+
+      - name: Configure git
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+
+      - name: Commit and push
+        run: |
+          git add pyproject.toml
+          git commit -m "bump version ${{ steps.bump.outputs.old_version }} -> ${{ steps.bump.outputs.new_version }}"
+          git push origin dev
