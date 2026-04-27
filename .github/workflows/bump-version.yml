@@ -15,47 +15,60 @@ on:
 jobs:
   bump-version:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/dev'
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
+      - name: Assert dev branch
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/dev" ]; then
+            echo "Error: This workflow must be run from the dev branch (got $GITHUB_REF)."
+            exit 1
+          fi
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
 
       - name: Bump version in pyproject.toml
         id: bump
         env:
           BUMP_TYPE: ${{ github.event.inputs.bump_type }}
         run: |
-          python3 << 'EOF'
-          import re, os, sys
+          uv run - << 'EOF'
+          # /// script
+          # dependencies = ["tomli-w"]
+          # ///
+          import tomllib, tomli_w, os
 
           bump_type = os.environ["BUMP_TYPE"]
 
-          with open("pyproject.toml") as f:
-              content = f.read()
+          with open("pyproject.toml", "rb") as f:
+              data = tomllib.load(f)
 
-          match = re.search(r'^version = "(\d+)\.(\d+)\.(\d+)"', content, re.MULTILINE)
-          if not match:
-              print("Could not find version in pyproject.toml", file=sys.stderr)
-              sys.exit(1)
-
-          major, minor, patch = int(match.group(1)), int(match.group(2)), int(match.group(3))
-          old_version = f"{major}.{minor}.{patch}"
+          old_version = data["project"]["version"]
+          major, minor, patch = map(int, old_version.split("."))
 
           if bump_type == "major":
-              major += 1; minor = 0; patch = 0
+              major += 1
+              minor = 0
+              patch = 0
           elif bump_type == "minor":
-              minor += 1; patch = 0
+              minor += 1
+              patch = 0
           else:
               patch += 1
 
           new_version = f"{major}.{minor}.{patch}"
-          new_content = content.replace(f'version = "{old_version}"', f'version = "{new_version}"', 1)
+          data["project"]["version"] = new_version
 
-          with open("pyproject.toml", "w") as f:
-              f.write(new_content)
+          with open("pyproject.toml", "wb") as fp:
+              tomli_w.dump(data, fp)
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"old_version={old_version}\n")
@@ -69,8 +82,18 @@ jobs:
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
-      - name: Commit and push
+      - name: Create PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          BRANCH="bump-version/${{ steps.bump.outputs.new_version }}"
+          git checkout -b "$BRANCH"
           git add pyproject.toml
           git commit -m "bump version ${{ steps.bump.outputs.old_version }} -> ${{ steps.bump.outputs.new_version }}"
-          git push origin dev
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "bump version ${{ steps.bump.outputs.old_version }} -> ${{ steps.bump.outputs.new_version }}" \
+            --body "Automated ${{ github.event.inputs.bump_type }} version bump triggered by @${{ github.actor }}." \
+            --base dev \
+            --head "$BRANCH" \
+            --label "release"
