@@ -84,6 +84,13 @@ def d3_api_request(
 
     Returns:
         JSON response from the API.
+
+    Examples:
+        ```python
+        from designer_plugin.api import d3_api_request, Method
+
+        response = d3_api_request(Method.GET, "localhost", 80, "api/session/status")
+        ```
     """
     url: str = f"http://{hostname}:{port}/{url_endpoint.lstrip('/')}"
     response = requests.request(
@@ -112,6 +119,13 @@ async def d3_api_arequest(
 
     Returns:
         JSON response from the API.
+
+    Examples:
+        ```python
+        from designer_plugin.api import d3_api_arequest, Method
+
+        response = await d3_api_arequest(Method.GET, "localhost", 80, "api/session/status")
+        ```
     """
     url: str = f"http://{hostname}:{port}/{url_endpoint.lstrip('/')}"
     async with aiohttp.ClientSession() as session:
@@ -144,6 +158,16 @@ async def d3_api_aexecute(
 
     Raises:
         PluginException: If the plugin execution fails.
+
+    Examples:
+        ```python
+        from designer_plugin.api import d3_api_aexecute
+        from designer_plugin import PluginPayload
+
+        payload = PluginPayload(script="return 1 + 1")
+        response = await d3_api_aexecute("localhost", 80, payload)
+        print(response.returnValue)  # "2"
+        ```
     """
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug(f"Send plugin api:{payload.debug_string()}")
@@ -190,6 +214,19 @@ async def d3_api_aregister_module(
     Raises:
         Exception: If the network request fails.
         PluginException: If module registration fails on Designer side.
+
+    Examples:
+        ```python
+        from designer_plugin.api import d3_api_aregister_module
+        from designer_plugin import RegisterPayload
+
+        payload = RegisterPayload(
+            moduleName="mymodule",
+            contents="def hello(): return 'Hello, World!'" # your python script
+        )
+        response = await d3_api_aregister_module("localhost", 80, payload)
+        print(response.status.code)  # 0 if successful
+        ```
     """
     try:
         if logger.isEnabledFor(logging.DEBUG):
@@ -238,6 +275,16 @@ def d3_api_execute(
 
     Raises:
         PluginException: If the plugin execution fails.
+
+    Examples:
+        ```python
+        from designer_plugin.api import d3_api_execute
+        from designer_plugin import PluginPayload
+
+        payload = PluginPayload(script="return 1 + 1")
+        response = d3_api_execute("localhost", 80, payload)
+        print(response.returnValue)  # "2"
+        ```
     """
 
     if logger.isEnabledFor(logging.DEBUG):
@@ -289,6 +336,19 @@ def d3_api_register_module(
     Raises:
         Exception: If the network request fails.
         PluginException: If module registration fails on Designer side.
+
+    Examples:
+        ```python
+        from designer_plugin.api import d3_api_register_module
+        from designer_plugin import RegisterPayload
+
+        payload = RegisterPayload(
+            moduleName="mymodule",
+            contents="def hello(): return 'Hello, World!'" # your python script
+        )
+        response = d3_api_register_module("localhost", 80, payload)
+        print(response.status.code)  # 0 if successful
+        ```
     """
     try:
         if logger.isEnabledFor(logging.DEBUG):

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-04-27
+
+### Added
+- Comprehensive code examples in docstrings for all public API classes and functions: `D3Session`, `D3AsyncSession`, `D3PluginClient`, `D3PythonScript`, `D3Function`, `DesignerPlugin`, `PluginException`, `PluginPayload`, and all low-level functions in `api.py`.
+- `scripts/generate_astro_docs.py`: script for generating Astro-compatible API reference documentation.
+
+### Changed
+- Improved `DesignerPlugin` class docstring and expanded `default_init()`, `from_json_file()`, and `service_info` docstrings with full Args/Returns sections and examples.
+- Added explicit notes to `register_module` and `register_all_modules` on `D3Session` and `D3AsyncSession` clarifying that eager registration is only needed in rare cases — sessions already auto-register lazily on `execute()`.
+- `PluginPayload.is_module_payload()` and `debug_string()` now have docstrings.
+
 ## [1.3.0] - 2026-01-06
 
 ### Added

@@ -136,6 +136,27 @@ T = TypeVar("T")
 
 
 class D3PythonScript(Generic[P, T]):
+    """Wrapper for standalone Designer script execution using the @d3pythonscript decorator.
+
+    The function body is inlined with argument assignments into a single script payload,
+    so no module registration is required before execution.
+
+    Examples:
+        ```python
+        from designer_plugin.d3sdk import d3pythonscript, D3Session
+        from designer_plugin.pystub import *
+
+        @d3pythonscript
+        def rename_surface(surface_name: str, new_name: str):
+            surface: Screen2 = resourceManager.load(
+                Path(f'objects/screen2/{surface_name}.apx'), Screen2)
+            surface.rename(surface.path.replaceFilename(new_name))
+
+        with D3Session('localhost', 80) as session:
+            session.rpc(rename_surface.payload("surface 1", "surface 2"))
+        ```
+    """
+
     def __init__(self, func: Callable[P, T]):
         """Initialise a D3PythonScript wrapper around a Python function.
 
@@ -244,6 +265,22 @@ class D3Function(D3PythonScript[P, T]):
     Class Attributes:
         _available_packages: Registry mapping module names to their required import packages.
         _available_d3functions: Registry mapping module names to their D3Function instances.
+
+    Examples:
+        ```python
+        from designer_plugin.d3sdk import d3function, D3Session
+        from designer_plugin.pystub import *
+
+        @d3function("surface_utils")
+        def get_surface_uid(surface_name: str) -> str:
+            surface: Screen2 = resourceManager.load(
+                Path(f'objects/screen2/{surface_name}.apx'), Screen2)
+            return str(surface.uid)
+
+        # "surface_utils" module is auto-registered on first execute
+        with D3Session('localhost', 80) as session:
+            uid = session.rpc(get_surface_uid.payload("surface 1"))
+        ```
     """
 
     _available_packages: defaultdict[str, set[str]] = defaultdict(set)
@@ -420,6 +457,8 @@ def d3pythonscript(func: Callable[P, T]) -> D3PythonScript[P, T]:
 
     Examples:
         ```python
+        from designer_plugin.d3sdk import d3pythonscript, D3Session
+
         @d3pythonscript
         def my_add(a: int, b: int) -> int:
             return a + b
@@ -427,11 +466,13 @@ def d3pythonscript(func: Callable[P, T]) -> D3PythonScript[P, T]:
         # Generate payload for execution
         payload = my_add.payload(5, 3)
         # The payload.script will contain:
-        '''
-        a=5
-        b=3
-        return a + b
-        '''
+        # a=5
+        # b=3
+        # return a + b
+
+        with D3Session('localhost', 80) as session:
+            result = session.rpc(my_add.payload(5, 3))
+            print(result)  # 8
         ```
     """
     return D3PythonScript(func)
@@ -458,20 +499,24 @@ def d3function(module_name: str = "") -> Callable[[Callable[P, T]], D3Function[P
 
     Examples:
         ```python
+        from designer_plugin.d3sdk import d3function, D3Session
+        from designer_plugin.pystub import *
+
         @d3function("my_d3module")
-        def capture_image(cam_name: str) -> str:
-            camera = d3.resourceManager.load(
-                d3.Path('objects/camera/{cam_name}.apx'),
-                d3.Camera
+        def get_camera_uid(cam_name: str) -> str:
+            camera = resourceManager.load(
+                Path(f'objects/camera/{cam_name}.apx'),
+                Camera
             )
-            return camera.uid
+            return str(camera.uid)
 
         # Generate payload for execution (calls the function by name)
-        payload = capture_image.payload("camera1")
-        # The payload.script will contain:
-        '''
-        return capture_image('camera1')
-        '''
+        payload = get_camera_uid.payload("camera1")
+        # payload.script == "return get_camera_uid('camera1')"
+
+        # "my_d3module" is auto-registered when entering the session
+        with D3Session('localhost', 80, {"my_d3module"}) as session:
+            uid = session.rpc(get_camera_uid.payload("camera1"))
         ```
     """
 
@@ -489,6 +534,15 @@ def get_register_payload(module_name: str) -> RegisterPayload | None:
 
     Returns:
         RegisterPayload for the module, or None if the module has no registered d3function.
+
+    Examples:
+        ```python
+        from designer_plugin.d3sdk import get_register_payload
+
+        payload = get_register_payload("mymodule")
+        if payload:
+            print(payload.contents)
+        ```
     """
     return D3Function.get_module_register_payload(module_name)
 
@@ -498,6 +552,12 @@ def get_all_d3functions() -> list[tuple[str, str]]:
 
     Returns:
         List of tuples containing (module_name, function_name) for all registered d3function.
+
+    Examples:
+        ```python
+        functions = get_all_d3functions()
+        # [("mymodule", "get_time"), ("mymodule", "get_surface_uid")]
+        ```
     """
     module_function_pairs: list[tuple[str, str]] = []
     for module_name, funcs in D3Function._available_d3functions.items():
@@ -512,5 +572,11 @@ def get_all_modules() -> list[str]:
 
     Returns:
         List of module names that have registered d3function.
+
+    Examples:
+        ```python
+        modules = get_all_modules()
+        # ["mymodule", "surface_utils"]
+        ```
     """
     return list(D3Function._available_d3functions.keys())

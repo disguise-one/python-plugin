@@ -48,6 +48,20 @@ class D3Session(D3SessionBase):
 
     Manages connection to a Designer instance and provides synchronous API for
     plugin execution, module registration, and generic HTTP requests.
+
+    Examples:
+        ```python
+        from designer_plugin.d3sdk import D3Session, d3pythonscript
+
+        @d3pythonscript
+        def get_time() -> str:
+            import datetime
+            return str(datetime.datetime.now())
+
+        with D3Session('localhost', 80) as session:
+            time = session.rpc(get_time.payload())
+            print(time)
+        ```
     """
 
     def __init__(
@@ -100,6 +114,12 @@ class D3Session(D3SessionBase):
 
         Raises:
             PluginException: If the plugin execution fails.
+
+        Examples:
+            ```python
+            with D3Session('localhost', 80) as session:
+                time: str = session.rpc(get_time.payload())
+            ```
         """
         return self.execute(payload, timeout_sec).returnValue
 
@@ -117,6 +137,15 @@ class D3Session(D3SessionBase):
 
         Raises:
             PluginException: If the plugin execution fails.
+
+        Examples:
+            ```python
+            with D3Session('localhost', 80) as session:
+                response = session.execute(get_time.payload())
+                print(f"Status: {response.status.code}")
+                print(f"Python log: {response.pythonLog}")
+                print(f"Value: {response.returnValue}")
+            ```
         """
         if payload.moduleName and payload.moduleName not in self.registered_modules:
             self.register_module(payload.moduleName)
@@ -141,6 +170,9 @@ class D3Session(D3SessionBase):
     ) -> bool:
         """Register a module with Designer.
 
+        Note that session already auto-registers modules in lazy manner on execute.
+        Call this method directly only when you need to register eagerly.
+
         Args:
             module_name: Name of the module to register.
             timeout_sec: Optional timeout in seconds for the request.
@@ -150,6 +182,13 @@ class D3Session(D3SessionBase):
 
         Raises:
             PluginException: If module registration fails on Designer side.
+
+        Examples:
+            ```python
+            with D3Session('localhost', 80) as session:
+                success = session.register_module("mymodule")
+                print(f"success: {success}")
+            ```
         """
         payload: RegisterPayload | None = D3Function.get_module_register_payload(
             module_name
@@ -163,6 +202,9 @@ class D3Session(D3SessionBase):
     def register_all_modules(self, timeout_sec: float | None = None) -> dict[str, bool]:
         """Register all modules decorated with @d3function.
 
+        Note that session already auto-registers modules in lazy manner on execute.
+        Call this method directly only when you need to register all modules eagerly.
+
         Args:
             timeout_sec: Optional timeout in seconds for each registration request.
 
@@ -171,6 +213,13 @@ class D3Session(D3SessionBase):
 
         Raises:
             PluginException: If any module registration fails on Designer side.
+
+        Examples:
+            ```python
+            with D3Session('localhost', 80) as session:
+                results = session.register_all_modules()
+                # {"mymodule": True, "utilities": True}
+            ```
         """
         modules: list[str] = list(D3Function._available_d3functions.keys())
         register_success: dict[str, bool] = {}
@@ -185,6 +234,24 @@ class D3AsyncSession(D3SessionBase):
 
     Manages connection to a Designer instance and provides asynchronous API for
     plugin execution, module registration, and generic HTTP requests.
+
+    Examples:
+        ```python
+        import asyncio
+        from designer_plugin.d3sdk import D3AsyncSession, d3pythonscript
+
+        @d3pythonscript
+        def get_time() -> str:
+            import datetime
+            return str(datetime.datetime.now())
+
+        async def main():
+            async with D3AsyncSession('localhost', 80) as session:
+                time = await session.rpc(get_time.payload())
+                print(time)
+
+        asyncio.run(main())
+        ```
     """
 
     def __init__(
@@ -257,6 +324,12 @@ class D3AsyncSession(D3SessionBase):
 
         Raises:
             PluginException: If the plugin execution fails.
+
+        Examples:
+            ```python
+            async with D3AsyncSession('localhost', 80) as session:
+                time: str = await session.rpc(get_time.payload())
+            ```
         """
         return (await self.execute(payload, timeout_sec)).returnValue
 
@@ -274,6 +347,14 @@ class D3AsyncSession(D3SessionBase):
 
         Raises:
             PluginException: If the plugin execution fails.
+
+        Examples:
+            ```python
+            async with D3AsyncSession('localhost', 80) as session:
+                response = await session.execute(get_time.payload())
+                print(f"Status: {response.status.code}")
+                print(f"Value: {response.returnValue}")
+            ```
         """
         if payload.moduleName and payload.moduleName not in self.registered_modules:
             await self.register_module(payload.moduleName)
@@ -285,6 +366,9 @@ class D3AsyncSession(D3SessionBase):
     ) -> bool:
         """Register a module with Designer asynchronously.
 
+        Note that session already auto-registers modules in lazy manner on execute.
+        Call this method directly only when you need to register eagerly.
+
         Args:
             module_name: Name of the module to register.
             timeout_sec: Optional timeout in seconds for the request.
@@ -294,6 +378,13 @@ class D3AsyncSession(D3SessionBase):
 
         Raises:
             PluginException: If module registration fails on Designer side.
+
+        Examples:
+            ```python
+            async with D3AsyncSession('localhost', 80) as session:
+                success = await session.register_module("mymodule")
+                print(f"success: {success}")
+            ```
         """
         payload: RegisterPayload | None = D3Function.get_module_register_payload(
             module_name
@@ -311,6 +402,9 @@ class D3AsyncSession(D3SessionBase):
     ) -> dict[str, bool]:
         """Register all modules decorated with @d3function asynchronously.
 
+        Note that session already auto-registers modules in lazy manner on execute.
+        Call this method directly only when you need to register all modules eagerly.
+
         Args:
             timeout_sec: Optional timeout in seconds for each registration request.
 
@@ -319,6 +413,13 @@ class D3AsyncSession(D3SessionBase):
 
         Raises:
             PluginException: If any module registration fails on Designer side.
+
+        Examples:
+            ```python
+            async with D3AsyncSession('localhost', 80) as session:
+                results = await session.register_all_modules()
+                # {"mymodule": True, "utilities": True}
+            ```
         """
         modules: list[str] = list(D3Function._available_d3functions.keys())
         register_success: dict[str, bool] = {}
