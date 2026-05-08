@@ -28,7 +28,11 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 ###############################################################################
 # Plugin endpoint constants
-def get_plugin_endpoint_url(hostname: str, port: int) -> str:
+def build_url(hostname: str, port: int | None, url_endpoint: str) -> str:
+    netloc: str = f"{hostname}:{port}" if port is not None else hostname
+    return f"http://{netloc}/{url_endpoint.lstrip('/')}"
+
+def get_plugin_endpoint_url(hostname: str, port: int | None) -> str:
     """Get the full URL for the plugin execution endpoint.
 
     Args:
@@ -38,10 +42,10 @@ def get_plugin_endpoint_url(hostname: str, port: int) -> str:
     Returns:
         Full HTTP URL for plugin execution endpoint.
     """
-    return f"http://{hostname}:{port}/{D3_PLUGIN_ENDPOINT}"
+    return build_url(hostname, port, D3_PLUGIN_ENDPOINT)
 
 
-def get_plugin_module_register_url(hostname: str, port: int) -> str:
+def get_plugin_module_register_url(hostname: str, port: int | None) -> str:
     """Get the full URL for the module registration endpoint.
 
     Args:
@@ -51,7 +55,7 @@ def get_plugin_module_register_url(hostname: str, port: int) -> str:
     Returns:
         Full HTTP URL for module registration endpoint.
     """
-    return f"http://{hostname}:{port}/{D3_PLUGIN_MODULE_REG_ENDPOINT}"
+    return build_url(hostname, port, D3_PLUGIN_MODULE_REG_ENDPOINT)
 
 
 ###############################################################################
@@ -69,7 +73,7 @@ class Method(StrEnum):
 def d3_api_request(
     method: Method,
     hostname: str,
-    port: int,
+    port: int | None,
     url_endpoint: str,
     **kwargs: Any,
 ) -> Any:
@@ -85,7 +89,7 @@ def d3_api_request(
     Returns:
         JSON response from the API.
     """
-    url: str = f"http://{hostname}:{port}/{url_endpoint.lstrip('/')}"
+    url = build_url(hostname, port, url_endpoint)
     response = requests.request(
         method,
         url,
@@ -97,7 +101,7 @@ def d3_api_request(
 async def d3_api_arequest(
     method: Method,
     hostname: str,
-    port: int,
+    port: int | None,
     url_endpoint: str,
     **kwargs: Unpack[aiohttp.client._RequestOptions],
 ) -> Any:
@@ -113,7 +117,7 @@ async def d3_api_arequest(
     Returns:
         JSON response from the API.
     """
-    url: str = f"http://{hostname}:{port}/{url_endpoint.lstrip('/')}"
+    url = build_url(hostname, port, url_endpoint)
     async with aiohttp.ClientSession() as session:
         async with session.request(
             method,
@@ -127,7 +131,7 @@ async def d3_api_arequest(
 # API async interface
 async def d3_api_aplugin(
     hostname: str,
-    port: int,
+    port: int | None,
     payload: PluginPayload[RetType],
     timeout_sec: float | None = None,
 ) -> PluginResponse[RetType]:
@@ -174,7 +178,7 @@ async def d3_api_aplugin(
 
 
 async def d3_api_aregister_module(
-    hostname: str, port: int, payload: RegisterPayload, timeout_sec: float | None = None
+    hostname: str, port: int | None, payload: RegisterPayload, timeout_sec: float | None = None
 ) -> PluginRegisterResponse:
     """Register a module asynchronously with Designer.
 
@@ -221,7 +225,7 @@ async def d3_api_aregister_module(
 # API sync interface
 def d3_api_plugin(
     hostname: str,
-    port: int,
+    port: int | None,
     payload: PluginPayload[RetType],
     timeout_sec: float | None = None,
 ) -> PluginResponse[RetType]:
